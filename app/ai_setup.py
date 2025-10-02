@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import os
 
 genai.configure(api_key=os.getenv("API_KEY"))
+load_dotenv() 
+client = genai.Client()
 
 system_prompt = (
     "You are a helpful SQL data engineering agent. You will be provided with two databases and your task is to combine them."
