@@ -8,7 +8,7 @@ system_prompt = (
     "Always generate valid SQL queries, and explain briefly what each query does."
 )
 
-# Conversation history as a single evolving string
+# Conversation history
 history = system_prompt + "\n\n"
 
 def model(prompt):
