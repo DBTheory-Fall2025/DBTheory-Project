@@ -1,4 +1,13 @@
 services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./seed-data:/seed-data
+    ports:
+      - "5432:5432"
   cli:
     build:
       context: ./src
@@ -8,3 +17,5 @@ services:
     command: python main.py
     environment:
       - DEBUG=${DEBUG}
+    depends_on:
+      - postgres
