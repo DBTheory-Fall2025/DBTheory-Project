@@ -6,3 +6,5 @@ services:
     volumes:
       - .:/src
     command: python main.py
+    environment:
+      - DEBUG=${DEBUG}

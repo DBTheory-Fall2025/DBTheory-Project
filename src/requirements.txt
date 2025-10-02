@@ -1,3 +1,4 @@
 tomli==2.2.1
 toml==0.10.2
 psycopg2==2.9.10
+dotenv==0.9.9

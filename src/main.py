@@ -12,7 +12,7 @@ def main():
     Main entry point of the script.
     """
     try:
-        with open("src/config.toml", "rb") as f:
+        with open("config.toml", "rb") as f:
             config = tomli.load(f)
     except FileNotFoundError:
         print("Error: config.toml not found.")
