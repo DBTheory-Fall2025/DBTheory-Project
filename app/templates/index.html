@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Database Combiner</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <h1>Database Combiner</h1>
+
+    <div class="multiselect-container">
+      <div class="search-box-container">
+        <i class="fas fa-search search-icon"></i>
+        <input
+          type="text"
+          class="search-box"
+          placeholder="Search databases..."
+        />
+      </div>
+      <div class="selected-items"></div>
+      <div class="separator"></div>
+      <div class="available-items"></div>
+    </div>
+
+    <div>
+      <label for="new-db-name">New Database Name:</label><br />
+      <input type="text" id="new-db-name" style="width: 100%" />
+    </div>
+
+    <button onclick="combineDatabases()">Combine Databases</button>
+    <div id="status-message" class="status-message"></div>
+
+    <div id="results-container" style="display: none">
+      <div class="mermaid-container">
+        <div class="mermaid" id="mermaid-diagram"></div>
+      </div>
+      <div class="tabs">
+        <div class="tab-link active" data-tab="similarity-finder">
+          Similarity Finder
+        </div>
+        <div class="tab-link" data-tab="schema-generator">
+          New Schema Generator
+        </div>
+        <div class="tab-link" data-tab="conversion-generator">
+          Conversion Generator
+        </div>
+        <div class="tab-link" data-tab="conversion-error-handler">
+          Conversion Error Handler
+        </div>
+        <div class="tab-link" data-tab="sql-generator">SQL Generator</div>
+        <div class="tab-link" data-tab="sql-error-handler">
+          SQL Error Handler
+        </div>
+        <div class="tab-link" data-tab="logic-checker">Logic Checker</div>
+      </div>
+      <div id="agent-logs">
+        <div id="similarity-finder" class="tab-content active"></div>
+        <div id="schema-generator" class="tab-content"></div>
+        <div id="conversion-generator" class="tab-content"></div>
+        <div id="conversion-error-handler" class="tab-content"></div>
+        <div id="sql-generator" class="tab-content"></div>
+        <div id="sql-error-handler" class="tab-content"></div>
+        <div id="logic-checker" class="tab-content"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ startOnLoad: true });
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>
