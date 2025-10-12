@@ -1,30 +1,21 @@
 let selectedItems = [];
 let allItems = [];
 
-// --- Agent Workflow Simulation ---
-const agents = [
-  "Similarity Finder",
-  "New Schema Generator",
-  "Conversion Generator",
-  "SQL Generator",
-  "Logic Checker",
-];
-
+// --- Agent Workflow ---
 const agentWorkflow = `
 graph TD
     A[Similarity Finder] --> B[New Schema Generator];
     B --> C[Conversion Generator];
     C --> D[SQL Generator];
     D --> E[SQL Executor];
-    E --> F[SQL Error Handler];
+    E --> F{SQL Error Handler};
     F --> D;
     C --> G[Conversion Executor];
-    G --> H[Conversion Error Handler];
+    G --> H{Conversion Error Handler};
     H --> C;
-    D --> I[Logic Checker];
-    I --> B;
-    I --> C;
-    I --> D;
+    E --> I[Logic Checker];
+    I -- Logic OK --> J[End];
+    I -- Rerun --> B;
 `;
 
 async function renderMermaidDiagram(activeNodeId = null) {
@@ -48,7 +39,7 @@ function addLogEntry(agentId, message, isCode = false) {
   entry.className = "log-entry";
 
   if (isCode) {
-    entry.innerHTML = `<code>${message}</code>`;
+    entry.innerHTML = `<code>${message.replace(/\n/g, "<br>")}</code>`;
   } else {
     entry.textContent = message;
   }
@@ -57,54 +48,36 @@ function addLogEntry(agentId, message, isCode = false) {
   logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll
 }
 
-async function simulateAgentWorkflow() {
-  const agentSequence = [
-    {
-      id: "A",
-      name: "similarity-finder",
-      duration: 1500,
-      message: "Finding similarities between columns...",
-    },
-    {
-      id: "B",
-      name: "schema-generator",
-      duration: 2000,
-      message: "Generating a new unified schema...",
-      code: "CREATE TABLE new_users (...)",
-    },
-    {
-      id: "C",
-      name: "conversion-generator",
-      duration: 1800,
-      message: "Generating data conversion scripts...",
-    },
-    {
-      id: "D",
-      name: "sql-generator",
-      duration: 2200,
-      message: "Generating SQL commands for the new schema...",
-    },
-    {
-      id: "I",
-      name: "logic-checker",
-      duration: 1000,
-      message: "Checking logic and consistency...",
-    },
-  ];
+function listenForUpdates() {
+  const eventSource = new EventSource("/status");
 
-  for (const agent of agentSequence) {
-    await renderMermaidDiagram(agent.id);
-    openTab(null, agent.name);
-    addLogEntry(agent.name, agent.message);
-    if (agent.code) {
-      addLogEntry(agent.name, agent.code, true);
+  eventSource.onmessage = function (event) {
+    const data = JSON.parse(event.data);
+
+    if (data.agentId === "workflow-complete") {
+      renderMermaidDiagram(); // Reset diagram
+      eventSource.close();
+      return;
     }
-    await new Promise((resolve) => setTimeout(resolve, agent.duration));
-  }
 
-  await renderMermaidDiagram(); // Reset diagram style
+    if (data.agentId === "error") {
+      showMessage(data.message, "error");
+      eventSource.close();
+      return;
+    }
+
+    renderMermaidDiagram(data.nodeId);
+    openTab(null, data.agentId);
+    addLogEntry(data.agentId, data.message, data.isCode);
+  };
+
+  eventSource.onerror = function (err) {
+    console.error("EventSource failed:", err);
+    showMessage("Connection to server lost.", "error");
+    eventSource.close();
+  };
 }
-// --- End Agent Workflow Simulation ---
+// --- End Agent Workflow ---
 
 async function loadDatabases() {
   const response = await fetch("/get-databases");
@@ -202,8 +175,8 @@ async function combineDatabases() {
     tab.appendChild(divider);
   });
 
-  // Start the agent workflow simulation
-  simulateAgentWorkflow();
+  // Start listening for real-time updates
+  listenForUpdates();
 
   const response = await fetch("/combine-databases", {
     method: "POST",
@@ -237,7 +210,6 @@ function openTab(evt, tabName) {
     targetContent.style.display = "block";
   }
 
-  // Find the corresponding tab link and activate it
   const targetLink = document.querySelector(`.tab-link[data-tab="${tabName}"]`);
   if (targetLink) {
     targetLink.classList.add("active");

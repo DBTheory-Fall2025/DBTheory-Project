@@ -4,3 +4,4 @@ psycopg2==2.9.10
 dotenv==0.9.9
 flask==2.2.2
 werkzeug==2.2.2
+google-generativeai
