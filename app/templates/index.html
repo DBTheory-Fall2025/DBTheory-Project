@@ -4,64 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Database Combiner</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-      .multiselect-container {
-        border: 1px solid #ccc;
-        min-height: 200px;
-        padding: 10px;
-        margin-bottom: 15px;
-      }
-      .selected-item {
-        background-color: #e9ecef;
-        padding: 5px;
-        margin: 5px;
-        display: inline-block;
-        border-radius: 3px;
-      }
-      .search-box {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 10px;
-      }
-      .available-items {
-        max-height: 300px;
-        overflow-y: auto;
-      }
-      .item {
-        cursor: pointer;
-        padding: 5px;
-        border-bottom: 1px solid #eee;
-      }
-      .item:hover {
-        background-color: #f0f0f0;
-      }
-      .status-message {
-        margin-top: 10px;
-        padding: 10px;
-        border-radius: 3px;
-      }
-      .success {
-        background-color: #dff0d8;
-        color: #3c763d;
-      }
-      .error {
-        background-color: #f2dede;
-        color: #a94442;
-      }
-    </style>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
   </head>
   <body>
     <h1>Database Combiner</h1>
 
     <div class="multiselect-container">
-      <input type="text" class="search-box" placeholder="Search databases..." />
+      <div class="search-box-container">
+        <i class="fas fa-search search-icon"></i>
+        <input
+          type="text"
+          class="search-box"
+          placeholder="Search databases..."
+        />
+      </div>
       <div class="selected-items"></div>
+      <div class="separator"></div>
       <div class="available-items"></div>
     </div>
 
@@ -73,108 +38,44 @@
     <button onclick="combineDatabases()">Combine Databases</button>
     <div id="status-message" class="status-message"></div>
 
+    <div id="results-container" style="display: none">
+      <div class="mermaid-container">
+        <div class="mermaid" id="mermaid-diagram"></div>
+      </div>
+      <div class="tabs">
+        <div class="tab-link active" data-tab="similarity-finder">
+          Similarity Finder
+        </div>
+        <div class="tab-link" data-tab="schema-generator">
+          New Schema Generator
+        </div>
+        <div class="tab-link" data-tab="conversion-generator">
+          Conversion Generator
+        </div>
+        <div class="tab-link" data-tab="conversion-error-handler">
+          Conversion Error Handler
+        </div>
+        <div class="tab-link" data-tab="sql-generator">SQL Generator</div>
+        <div class="tab-link" data-tab="sql-error-handler">
+          SQL Error Handler
+        </div>
+        <div class="tab-link" data-tab="logic-checker">Logic Checker</div>
+      </div>
+      <div id="agent-logs">
+        <div id="similarity-finder" class="tab-content active"></div>
+        <div id="schema-generator" class="tab-content"></div>
+        <div id="conversion-generator" class="tab-content"></div>
+        <div id="conversion-error-handler" class="tab-content"></div>
+        <div id="sql-generator" class="tab-content"></div>
+        <div id="sql-error-handler" class="tab-content"></div>
+        <div id="logic-checker" class="tab-content"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script>
-      let selectedItems = [];
-      let allItems = [];
-
-      async function loadDatabases() {
-        const response = await fetch("/get-databases");
-        const data = await response.json();
-
-        const availableContainer = document.querySelector(".available-items");
-        if (!data.success) {
-          showMessage(data.error || "An unknown error occurred.", "error");
-          availableContainer.innerHTML = `<div class="item">Could not load databases.</div>`;
-          return;
-        }
-
-        allItems = data.databases;
-        if (allItems.length === 0) {
-          availableContainer.innerHTML = `<div class="item">No databases found in config file.</div>`;
-        } else {
-          updateAvailableItems();
-        }
-      }
-
-      function updateSelectedItems() {
-        const container = document.querySelector(".selected-items");
-        container.innerHTML = "";
-
-        selectedItems.forEach((item) => {
-          const div = document.createElement("div");
-          div.className = "selected-item";
-          div.textContent = item;
-          div.onclick = () => deselectItem(item);
-          container.appendChild(div);
-        });
-      }
-
-      function updateAvailableItems() {
-        const searchBox = document.querySelector(".search-box");
-        const filter = searchBox.value.toLowerCase();
-        const availableContainer = document.querySelector(".available-items");
-
-        const filteredItems = allItems.filter(
-          (item) =>
-            !selectedItems.includes(item) && item.toLowerCase().includes(filter)
-        );
-
-        availableContainer.innerHTML = "";
-        filteredItems.forEach((item) => {
-          const div = document.createElement("div");
-          div.className = "item";
-          div.textContent = item;
-          div.onclick = () => selectItem(item);
-          availableContainer.appendChild(div);
-        });
-      }
-
-      function selectItem(item) {
-        if (!selectedItems.includes(item)) {
-          selectedItems.push(item);
-          updateSelectedItems();
-          updateAvailableItems();
-        }
-      }
-
-      function deselectItem(item) {
-        selectedItems = selectedItems.filter((i) => i !== item);
-        updateSelectedItems();
-        updateAvailableItems();
-      }
-
-      function showMessage(message, type = "success") {
-        const statusDiv = document.getElementById("status-message");
-        statusDiv.textContent = message;
-        statusDiv.className = `status-message ${type}`;
-      }
-
-      async function combineDatabases() {
-        const newDbName = document.getElementById("new-db-name").value;
-
-        const response = await fetch("/combine-databases", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            selected_dbs: selectedItems,
-            new_db_name: newDbName,
-          }),
-        });
-
-        const data = await response.json();
-        showMessage(
-          data.error || "Databases combined successfully",
-          data.success ? "success" : "error"
-        );
-      }
-
-      // Event listeners
-      document
-        .querySelector(".search-box")
-        .addEventListener("input", updateAvailableItems);
-
-      // Load databases on page load
-      loadDatabases();
+      mermaid.initialize({ startOnLoad: true });
     </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
   </body>
 </html>
