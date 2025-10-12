@@ -8,14 +8,16 @@ services:
       - ./seed-data:/seed-data
     ports:
       - "5432:5432"
-  cli:
-    build:
-      context: ./src
-      dockerfile: Dockerfile
-    volumes:
-      - .:/src
-    command: python main.py
+
+  app:
+    ports:
+      - "51932:51932"
     environment:
-      - DEBUG=${DEBUG}
+      - AI_KEY=${AI_KEY}
     depends_on:
       - postgres
+    volumes:
+      - ./app:/app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
