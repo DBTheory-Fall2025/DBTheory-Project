@@ -1,8 +1,8 @@
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 
-client = genai.Client(api_key=os.getenv("API_KEY"))
+genai.configure(api_key=os.getenv("API_KEY"))
 
 system_prompt = (
     "You are a helpful SQL data engineering agent. You will be provided with two databases and your task is to combine them."
@@ -17,22 +17,10 @@ def model(prompt):
 
     history += f"User: {prompt}\n"
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=history
-    )
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(history)
 
 
     history += f"Assistant: {response.text}\n"
 
     return response.text
-
-
-
-prompt = f"""
-Here are two database schemas:
-
-Task: Write SQL queries that combine these databases. 
-"""
-
-print(model(system_prompt))
