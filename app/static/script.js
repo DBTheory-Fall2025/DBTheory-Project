@@ -27,7 +27,7 @@ async function renderMermaidDiagram(activeNodeId = null) {
     diagram += `\nstyle ${activeNodeId} fill:#f9f,stroke:#333,stroke-width:4px`;
   }
 
-  const { svg } = await mermaid.render("mermaid-svg", diagram);
+  const { svg } = await window.mermaid.render("mermaid-svg", diagram);
   container.innerHTML = svg;
 }
 
