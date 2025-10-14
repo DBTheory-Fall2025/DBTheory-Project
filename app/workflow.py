@@ -5,7 +5,7 @@ from .agents import (
     sql_generator,
     logic_checker,
 )
-from .utils.db_util import get_schema, execute_query
+from .utils.db_util import get_schema, write_to_target_db
 
 def run_workflow(db_connections, new_db_conn, status_callback):
     """
@@ -32,7 +32,7 @@ def run_workflow(db_connections, new_db_conn, status_callback):
 
         # 4. SQL Executor (Non-agent)
         status_callback("sql-generator", "Executing SQL commands...", "E")
-        execute_query(new_db_conn, sql_commands)
+        write_to_target_db(new_db_conn, sql_commands)
         status_callback("sql-generator", "Tables created successfully.", "E")
         time.sleep(1)
 

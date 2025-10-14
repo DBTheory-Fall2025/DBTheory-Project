@@ -20,7 +20,12 @@ def find_similarities(db_connections):
                 prompt += f"    - {col_name} ({col_type})\n"
         prompt += "\n"
 
-    prompt += "Please analyze these schemas and identify columns and tables that are similar and could be merged. Provide a detailed analysis."
+    prompt += """
+Please analyze these schemas and identify columns and tables that are similar and could be merged.
+You can use the `read_sql_data(query)` function to inspect the data in the tables to get a better understanding of the contents.
+For example, you can run `read_sql_data("SELECT * FROM users LIMIT 5")` to see a few rows from the users table.
+Provide a detailed analysis of the similarities and a plan for merging the data.
+"""
 
     # Get the AI's analysis
     analysis = model(prompt)
