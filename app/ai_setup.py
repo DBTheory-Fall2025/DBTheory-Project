@@ -17,7 +17,8 @@ def model(prompt):
 
     history += f"User: {prompt}\n"
 
-    model = genai.GenerativeModel("gemini-pro")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+    model = genai.GenerativeModel(model_name)
     response = model.generate_content(history)
 
 

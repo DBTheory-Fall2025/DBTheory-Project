@@ -8,16 +8,16 @@ graph TD
     B --> C[Conversion Generator];
     C --> D[SQL Generator];
     D --> E[SQL Executor];
-    E --> F{SQL Error Handler};
+    E --> F[SQL Error Handler];
     F --> D;
     C --> G[Conversion Executor];
-    G --> H{Conversion Error Handler};
+    G --> H[Conversion Error Handler];
     H --> C;
-    E --> I[Logic Checker];
-    I -- Logic OK --> J[End];
-    I -- Rerun --> B;
+    D --> I[Logic Checker];
+    I --> B;
+    I --> C;
+    I --> D;
 `;
-
 async function renderMermaidDiagram(activeNodeId = null) {
   const container = document.getElementById("mermaid-diagram");
   container.innerHTML = ""; // Clear previous diagram
@@ -228,5 +228,7 @@ document.querySelectorAll(".tab-link").forEach((tab) => {
 });
 
 // Initial setup
-loadDatabases();
-renderMermaidDiagram();
+document.addEventListener("DOMContentLoaded", () => {
+  loadDatabases();
+  renderMermaidDiagram();
+});
