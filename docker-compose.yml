@@ -1,10 +1,23 @@
 services:
-  cli:
-    build:
-      context: ./src
-      dockerfile: Dockerfile
-    volumes:
-      - .:/src
-    command: python main.py
+  postgres:
+    image: postgres:latest
     environment:
-      - DEBUG=${DEBUG}
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./seed-data:/seed-data
+    ports:
+      - "5432:5432"
+
+  app:
+    ports:
+      - "51932:51932"
+    environment:
+      - AI_KEY=${AI_KEY}
+    depends_on:
+      - postgres
+    volumes:
+      - ./app:/app
+    build:
+      context: ./app
+      dockerfile: Dockerfile

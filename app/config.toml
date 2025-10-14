@@ -1,12 +1,12 @@
 [database.db1]
-host = "localhost"
+host = "postgres"
 port = 5432
 user = "user1"
 password = "password1"
 dbname = "db1"
 
 [database.db2]
-host = "localhost"
+host = "postgres"
 port = 5432
 user = "user2"
 password = "password2"
