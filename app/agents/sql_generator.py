@@ -1,3 +1,4 @@
+from .constants.prompt_constants import PLEASE_ONLY_CODE_PLEASE_I_BEG_YOU
 from ..ai_setup import model
 
 def generate_sql(schema):
@@ -7,7 +8,7 @@ def generate_sql(schema):
     """
     prompt = f"""
 Based on the following unified schema, please generate the final, executable SQL `CREATE TABLE` commands.
-Ensure that the SQL is valid PostgreSQL.
+{PLEASE_ONLY_CODE_PLEASE_I_BEG_YOU}
 
 Schema:
 {schema}

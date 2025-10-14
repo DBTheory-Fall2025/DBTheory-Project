@@ -1,0 +1,1 @@
+PLEASE_ONLY_CODE_PLEASE_I_BEG_YOU = "Provide only the SQL code for the new schema. It should be valid Postgres SQL code. Do not use markdown. Your response is going to be executed directly."

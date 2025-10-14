@@ -29,4 +29,5 @@ Provide a detailed analysis of the similarities and a plan for merging the data.
 
     # Get the AI's analysis
     analysis = model(prompt)
+    # TODO: Give the ai the result of it's read_sql_data(query) & have it re-analyze if it wishes
     return analysis
