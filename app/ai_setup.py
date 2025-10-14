@@ -1,9 +1,13 @@
-import google.generativeai as genai
+from google import genai
+#import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 
-genai.configure(api_key=os.getenv("API_KEY"))
-load_dotenv() 
+# Load .env file
+load_dotenv()
+
+#genai.configure(api_key=os.getenv("API_KEY"))
+ 
 client = genai.Client()
 
 system_prompt = (
@@ -19,10 +23,13 @@ def model(prompt):
 
     history += f"User: {prompt}\n"
 
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(history)
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=history
+    )
 
 
     history += f"Assistant: {response.text}\n"
 
     return response.text
+print(model("hi"))
