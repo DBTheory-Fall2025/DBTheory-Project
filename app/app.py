@@ -3,18 +3,29 @@ import os
 import queue
 import threading
 from flask import Flask, Response, render_template, jsonify, request
-import tomli
 from .utils.db_util import connect_to_db
 from .workflow import run_workflow
 
 app = Flask(__name__)
 
+# In-memory storage for database configurations
+db_configs_in_memory = {}
+
 # In-memory queue for SSE messages
 update_queue = queue.Queue()
 
+def load_db_configs():
+    global db_configs_in_memory
+    config_path = "/config/db_config.json"
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            db_configs_in_memory = json.load(f)
+        print("Database configurations loaded successfully.")
+    else:
+        print("Config file not found, starting with empty DB configs.")
+
 def get_db_configs():
-    with open("config.toml", "rb") as f:
-        return tomli.load(f).get("database", {})
+    return db_configs_in_memory
 
 @app.route('/')
 def index():
@@ -104,4 +115,5 @@ def status():
     return Response(event_stream(), mimetype="text/event-stream")
 
 if __name__ == '__main__':
+    load_db_configs()
     app.run(debug=True, threaded=True)

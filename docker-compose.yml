@@ -1,13 +1,25 @@
+volumes:
+  shared_config:
+
 services:
+  db-factory:
+    image: python:3.9
+    volumes:
+      - .:/app
+      - shared_config:/config
+    command: python /app/db_factory/builder.py
+
   postgres:
     image: postgres:latest
     environment:
       POSTGRES_PASSWORD: password
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./seed-data:/seed-data
+      - ./data:/data
     ports:
       - "5432:5432"
+    depends_on:
+      - db-factory
 
   dbTarget:
     image: postgres:latest
@@ -33,6 +45,7 @@ services:
       - dbTarget
     volumes:
       - ./app:/app
+      - shared_config:/config
     build:
       context: ./app
       dockerfile: Dockerfile

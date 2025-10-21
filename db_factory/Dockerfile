@@ -1,0 +1,6 @@
+FROM python:3.9
+WORKDIR /app
+COPY ./db_factory/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "/app/db_factory/builder.py"]
