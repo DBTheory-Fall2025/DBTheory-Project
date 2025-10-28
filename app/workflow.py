@@ -85,6 +85,10 @@ def run_workflow(db_connections, new_db_conn, status_callback):
         # 5. generate the conversion scripts
         status_callback("conversion-generator", "Generating SQL INSERT INTO commands...", "G")
         conversion_scripts = conversion_generator.generate_conversion_scripts(analysis,new_schema,sql_commands)
+        if isinstance(conversion_scripts, list):
+            conversion_output = "\n\n".join(conversion_scripts)
+        else:
+            conversion_output = str(conversion_scripts)
         status_callback("conversion-generator", conversion_scripts, "G", is_code=True)
         time.sleep(1)
 
