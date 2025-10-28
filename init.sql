@@ -1,10 +1,10 @@
 -- this is an auto-generated file by db_factory/builder.py
 
-\c postgres
 CREATE USER CincyPotHole_user WITH PASSWORD 'CincyPotHole_password';
 CREATE DATABASE CincyPotHole;
 GRANT ALL PRIVILEGES ON DATABASE CincyPotHole TO CincyPotHole_user;
-\c CincyPotHole
+
+SET search_path TO CincyPotHole;
 
 COPY MostPotHoleNeiYear
 FROM '/data/CincyPotHole/MostPotHoleNeiYear.cvs'
@@ -39,7 +39,8 @@ CSV HEADER;
 CREATE USER HamiltonGarb_user WITH PASSWORD 'HamiltonGarb_password';
 CREATE DATABASE HamiltonGarb;
 GRANT ALL PRIVILEGES ON DATABASE HamiltonGarb TO HamiltonGarb_user;
-\c HamiltonGarb
+
+SET search_path TO HamiltonGarb;
 
 COPY Solid_Waste_Landfill_westV
 FROM '/data/HamiltonGarb/Solid_Waste_Landfill_westV.csv'
@@ -79,7 +80,8 @@ CSV HEADER;
 CREATE USER TravDB_user WITH PASSWORD 'TravDB_password';
 CREATE DATABASE TravDB;
 GRANT ALL PRIVILEGES ON DATABASE TravDB TO TravDB_user;
-\c TravDB
+
+SET search_path TO TravDB;
 
 COPY flights
 FROM '/data/TravDB/flights.csv'

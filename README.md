@@ -9,6 +9,14 @@ npm run dev
 
 This project uses a database factory to automatically generate and configure databases for testing purposes. You can also connect to existing external databases.
 
+Whenever making changes to dbs, make sure to run
+
+```
+npm run down
+```
+
+To clean out old databases (dbs will not build if it finds one already exists)
+
 ### Adding a New Local Database
 
 To add a new local database that is generated from CSV files, follow these steps:
