@@ -1,6 +1,7 @@
 from .constants.prompt_constants import PLEASE_ONLY_CODE_PLEASE_I_BEG_YOU
 from ..ai_setup import model
 import json
+import re
 
 example_json = """{
   "queries": [
@@ -30,7 +31,7 @@ Return only the JSON object containing the queries, do not return any additional
     
   response = model(prompt, agent_name = "sql_generator")
   try:
-      parsed = json.loads(response)
+      parsed = json.loads(clean_json_response(response))
       if isinstance(parsed, dict) and "queries" in parsed:
           return parsed["queries"]
       else:
@@ -39,3 +40,10 @@ Return only the JSON object containing the queries, do not return any additional
   except json.JSONDecodeError:
       print("⚠️ Failed to parse AI output as JSON. Falling back to naive splitting.")
       return [q.strip() + ";" for q in response.split(";") if q.strip()]
+
+
+def clean_json_response(response: str):
+    # Remove Markdown fences (```json ... ``` or ```; etc.)
+    cleaned = re.sub(r"^```[a-zA-Z]*\s*", "", response)
+    cleaned = re.sub(r"```;?\s*$", "", cleaned)
+    return cleaned.strip()

@@ -30,7 +30,11 @@ def run_workflow(db_connections, new_db_conn, status_callback):
         # 3. SQL Generator
         status_callback("sql-generator", "Generating SQL CREATE TABLE commands...", "D")
         sql_commands = sql_generator.generate_sql(new_schema)
-        status_callback("sql-generator", sql_commands, "D", is_code=True)
+        if isinstance(sql_commands, list):
+            sql_output = "\n\n".join(sql_commands)
+        else:
+            sql_output = str(sql_commands)
+        status_callback("sql-generator", sql_output, "D", is_code=True)
         time.sleep(1)
 
         # 4. SQL Executor (Non-agent)

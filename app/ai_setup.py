@@ -10,25 +10,21 @@ system_prompt = (
 )
 
 # Conversation history
-history = system_prompt + "\n\n"
+#history = system_prompt + "\n\n"
 
 _histories = {}
 
 def model(user_prompt, agent_name="default"):
-    """Same as before, but with separate memory per agent."""
     if agent_name not in _histories:
-        _histories[agent_name] = [("system", system_prompt)]
+        _histories[agent_name] = []
 
-    history = _histories[agent_name]
-    history.append(("user", user_prompt))
+    _histories[agent_name].append(f"User: {user_prompt}")
 
     gm = genai.GenerativeModel("gemini-2.5-pro")
-    response = gm.generate_content(
-        "\n".join(f"{role}: {text}" for role, text in history)
-    )
+    response = gm.generate_content("\n".join(_histories[agent_name]))
 
     text = response.text
-    history.append(("assistant", text))
+    _histories[agent_name].append(f"Assistant: {text}")
     return text
 
 # def model(prompt):
