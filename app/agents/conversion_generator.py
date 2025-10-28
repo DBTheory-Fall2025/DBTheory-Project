@@ -33,7 +33,7 @@ create table statements:
 {sql_commands}
 """
     
-    response = model(prompt)
+    response = model(prompt, agent_name = "conversion_generator")
     try:
         parsed = json.loads(response)
         if isinstance(parsed, dict) and "queries" in parsed:

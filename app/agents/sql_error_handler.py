@@ -29,5 +29,5 @@ def handle_sql_error(sql_commands, error):
         - Return only the corrected SQL, nothing else. Do not return any additional comments or writing.
     """
 
-    fixed_sql = model(prompt)
+    fixed_sql = model(prompt, agent_name= "sql_error_handler")
     return fixed_sql

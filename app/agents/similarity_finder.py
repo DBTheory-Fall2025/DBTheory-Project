@@ -60,7 +60,7 @@ If you have enough information already, respond with a JSON object like this:
 """
 
     # Get the AI's analysis
-    ai_response = model(prompt)
+    ai_response = model(prompt,agent_name = "similarity_finder")
     analysis = ai_response
 
     if isinstance(ai_response, str) and '"read_requests"' in ai_response:
@@ -114,7 +114,7 @@ and provide your final similarity analysis and merge plan as JSON:
 {analysis_json}
 """
 
-        analysis = model(re_prompt)
+        analysis = model(re_prompt, agent_name = "similarity_finder")
 
     # TODO: Give the ai the result of it's read_sql_data(query) & have it re-analyze if it wishes
     return analysis

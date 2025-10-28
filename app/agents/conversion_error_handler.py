@@ -31,5 +31,5 @@ def handle_conversion_error(script, error):
         - Return only the corrected SQL, nothing else. Do not return any additional comments or writing.
     """
 
-    fixed_sql = model(prompt)
+    fixed_sql = model(prompt, agent_name = "conversion_error_handler")
     return fixed_sql

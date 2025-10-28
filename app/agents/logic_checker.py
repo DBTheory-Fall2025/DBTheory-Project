@@ -37,7 +37,7 @@ INSERT/Conversion scripts:
 {conversion_scripts}
 
 """
-    response = model(prompt).strip().lower()
+    response = model(prompt, agent_name = "logic_checker").strip().lower()
 
     if response == "true":
         return True

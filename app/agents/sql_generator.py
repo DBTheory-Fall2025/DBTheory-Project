@@ -28,7 +28,7 @@ Schema:
 Return only the JSON object containing the queries, do not return any additional comments, characters, or annotations. 
 """
     
-  response = model(prompt)
+  response = model(prompt, agent_name = "sql_generator")
   try:
       parsed = json.loads(response)
       if isinstance(parsed, dict) and "queries" in parsed:
