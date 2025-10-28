@@ -1,8 +1,8 @@
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 
-client = genai.Client(api_key=os.getenv("API_KEY"))
+genai.configure(api_key=os.getenv("API_KEY"))
 
 system_prompt = (
     "You are a helpful SQL data engineering agent. You will be provided with two databases and your task is to combine them."
@@ -10,29 +10,33 @@ system_prompt = (
 )
 
 # Conversation history
-history = system_prompt + "\n\n"
+#history = system_prompt + "\n\n"
 
-def model(prompt):
-    global history
+_histories = {}
 
-    history += f"User: {prompt}\n"
+def model(user_prompt, agent_name="default"):
+    if agent_name not in _histories:
+        _histories[agent_name] = []
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=history
-    )
+    _histories[agent_name].append(f"User: {user_prompt}")
+
+    gm = genai.GenerativeModel("gemini-2.5-pro")
+    response = gm.generate_content("\n".join(_histories[agent_name]))
+
+    text = response.text
+    _histories[agent_name].append(f"Assistant: {text}")
+    return text
+
+# def model(prompt):
+#     global history
+
+#     history += f"User: {prompt}\n"
+
+#     model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+#     model = genai.GenerativeModel(model_name)
+#     response = model.generate_content(history)
 
 
-    history += f"Assistant: {response.text}\n"
+#     history += f"Assistant: {response.text}\n"
 
-    return response.text
-
-
-
-prompt = f"""
-Here are two database schemas:
-
-Task: Write SQL queries that combine these databases. 
-"""
-
-print(model(system_prompt))
+#     return response.text
