@@ -9,4 +9,5 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN dos2unix ./entrypoint.sh
+ENV PYTHONUNBUFFERED=1
 ENTRYPOINT ["sh", "./entrypoint.sh"]
