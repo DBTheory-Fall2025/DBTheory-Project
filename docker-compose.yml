@@ -7,28 +7,33 @@ services:
     volumes:
       - .:/app
       - shared_config:/config
-    command: python /app/db_factory/builder.py
+    build:
+      context: ./db_factory
+      dockerfile: Dockerfile
 
   postgres:
     image: postgres:latest
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_PASSWORD: password
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./data:/data
-    ports:
-      - "5432:5432"
     depends_on:
-      - db-factory
+      db-factory:
+        condition: service_completed_successfully
 
   dbTarget:
     image: postgres:latest
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: ${DBTARGET_NAME}
       POSTGRES_USER: ${DBTARGET_USER}
       POSTGRES_PASSWORD: ${DBTARGET_PASSWORD}
-    ports:
-      - "5433:5432"
+    depends_on:
+      - postgres
 
   app:
     ports:
@@ -42,7 +47,6 @@ services:
       - DBTARGET_PASSWORD=${DBTARGET_PASSWORD}
     depends_on:
       - postgres
-      - dbTarget
     volumes:
       - ./app:/app
       - shared_config:/config

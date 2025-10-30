@@ -24,6 +24,8 @@ def load_db_configs():
     else:
         print("Config file not found, starting with empty DB configs.")
 
+load_db_configs()
+
 def get_db_configs():
     return db_configs_in_memory
 
@@ -115,5 +117,4 @@ def status():
     return Response(event_stream(), mimetype="text/event-stream")
 
 if __name__ == '__main__':
-    load_db_configs()
     app.run(debug=True, threaded=True)
