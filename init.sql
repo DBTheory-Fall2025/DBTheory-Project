@@ -200,7 +200,7 @@ CREATE TABLE "Solid_Waste_Landfill_westV" (
     "rs_code" TEXT
 );
 
-CREATE TABLE "Table_2-1" (
+CREATE TABLE "Table_2_1" (
     "Origin" VARCHAR(255),
     "Tons Landfilled" DECIMAL,
     "Percent Landfilled" VARCHAR(255),
@@ -208,7 +208,7 @@ CREATE TABLE "Table_2-1" (
     "Percent Recycled" VARCHAR(255)
 );
 
-CREATE TABLE "Table_2-2" (
+CREATE TABLE "Table_2_2" (
     "Material Sample Origin" VARCHAR(255),
     "Refuse Season 1 Target" DECIMAL NULL,
     "Refuse Season 2 Target" DECIMAL NULL,
@@ -219,21 +219,21 @@ CREATE TABLE "Table_2-2" (
     "Grand Total" DECIMAL NULL
 );
 
-CREATE TABLE "Table_4-1" (
+CREATE TABLE "Table_4_1" (
     "Material Category" VARCHAR(255) PRIMARY KEY,
     "Mean (%)" DECIMAL,
     "Margin of Error (%)" DECIMAL,
     "Tons/Yr" INTEGER
 );
 
-CREATE TABLE "Table_4-2" (
+CREATE TABLE "Table_4_2" (
     "Material Category" VARCHAR(255) PRIMARY KEY,
     "Mean (%)" DECIMAL,
     "Margin of Error (%)" DECIMAL,
     "Tons/Yr" INTEGER
 );
 
-CREATE TABLE "Table_4-3" (
+CREATE TABLE "Table_4_3" (
     "Material Category" VARCHAR(255) PRIMARY KEY,
     "Mean (%)" DECIMAL,
     "Margin of Error (%)" DECIMAL,
@@ -274,12 +274,6 @@ CSV HEADER;
 -- Populating Solid_Waste_Landfill_westV from Solid_Waste_Landfill_westV.csv
 COPY "Solid_Waste_Landfill_westV" ("X", "Y", "FID", "permit_id", "fac_name", "issuedate", "expiredate", "sub_desc", "t_c_desc", "statusflag", "perm_type", "latitude", "longitude", "start_date", "end_date", "resp_name", "resp_id", "sludge_ton", "customers", "dist_acres", "des_flow_q", "avg_flow_q", "major_flag", "huc", "rstream", "rs_code")
 FROM '/seed-data/HamiltonGarb/Solid_Waste_Landfill_westV.csv'
-DELIMITER ','
-CSV HEADER;
-
--- Populating Table_4_1_2 from Table_4-1 (2).csv
-COPY "Table_4_1_2" ("Material Category", "Mean (%)", "Margin of Error (%)", "Tons/Yr")
-FROM '/seed-data/HamiltonGarb/Table_4-1 (2).csv'
 DELIMITER ','
 CSV HEADER;
 

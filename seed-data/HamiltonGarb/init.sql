@@ -27,7 +27,7 @@ CREATE TABLE "Solid_Waste_Landfill_westV" (
     "rs_code" TEXT
 );
 
-CREATE TABLE "Table_2-1" (
+CREATE TABLE "Table_2_1" (
     "Origin" VARCHAR(255),
     "Tons Landfilled" DECIMAL,
     "Percent Landfilled" VARCHAR(255),
@@ -35,7 +35,7 @@ CREATE TABLE "Table_2-1" (
     "Percent Recycled" VARCHAR(255)
 );
 
-CREATE TABLE "Table_2-2" (
+CREATE TABLE "Table_2_2" (
     "Material Sample Origin" VARCHAR(255),
     "Refuse Season 1 Target" DECIMAL NULL,
     "Refuse Season 2 Target" DECIMAL NULL,
@@ -46,21 +46,21 @@ CREATE TABLE "Table_2-2" (
     "Grand Total" DECIMAL NULL
 );
 
-CREATE TABLE "Table_4-1" (
+CREATE TABLE "Table_4_1" (
     "Material Category" VARCHAR(255) PRIMARY KEY,
     "Mean (%)" DECIMAL,
     "Margin of Error (%)" DECIMAL,
     "Tons/Yr" INTEGER
 );
 
-CREATE TABLE "Table_4-2" (
+CREATE TABLE "Table_4_2" (
     "Material Category" VARCHAR(255) PRIMARY KEY,
     "Mean (%)" DECIMAL,
     "Margin of Error (%)" DECIMAL,
     "Tons/Yr" INTEGER
 );
 
-CREATE TABLE "Table_4-3" (
+CREATE TABLE "Table_4_3" (
     "Material Category" VARCHAR(255) PRIMARY KEY,
     "Mean (%)" DECIMAL,
     "Margin of Error (%)" DECIMAL,
