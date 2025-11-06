@@ -95,13 +95,11 @@ def main():
                     print(f"Could not detect columns for {csv_path}, skipping data copy.")
                     continue
                 
-                sanitized_columns = [sanitize(c) for c in columns]
-                
                 # Copy data into the existing table
                 f.write(f"-- Populating {table_name} from {csv_file}\n")
-                column_list_str = ', '.join([f'"{c}"' for c in sanitized_columns])
+                column_list_str = ', '.join([f'"{c}"' for c in columns])
                 f.write(f'COPY "{table_name}" ({column_list_str})\n')
-                f.write(f"FROM '/data/{dir_name}/{csv_file}'\n")
+                f.write(f"FROM '/seed-data/{dir_name}/{csv_file}'\n")
                 f.write("DELIMITER ','\n")
                 f.write("CSV HEADER;\n\n")
 

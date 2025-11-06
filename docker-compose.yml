@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./data:/data
+      - ./seed-data:/seed-data
     depends_on:
       db-factory:
         condition: service_completed_successfully
