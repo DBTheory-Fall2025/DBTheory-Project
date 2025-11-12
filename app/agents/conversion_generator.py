@@ -1,6 +1,7 @@
 from ..ai_setup import model
 import json
 import re
+
 example_json = """{
   "queries": [
     "INSERT INTO ...;",
