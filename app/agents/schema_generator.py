@@ -15,5 +15,5 @@ Analysis:
 {analysis}
 """
     
-    new_schema = model(prompt)
+    new_schema = model(prompt, agent_name = "schema_generator")
     return new_schema

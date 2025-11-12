@@ -10,18 +10,33 @@ system_prompt = (
 )
 
 # Conversation history
-history = system_prompt + "\n\n"
+#history = system_prompt + "\n\n"
 
-def model(prompt):
-    global history
+_histories = {}
 
-    history += f"User: {prompt}\n"
+def model(user_prompt, agent_name="default"):
+    if agent_name not in _histories:
+        _histories[agent_name] = []
 
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
-    model = genai.GenerativeModel(model_name)
-    response = model.generate_content(history)
+    _histories[agent_name].append(f"User: {user_prompt}")
+
+    gm = genai.GenerativeModel("gemini-2.5-pro")
+    response = gm.generate_content("\n".join(_histories[agent_name]))
+
+    text = response.text
+    _histories[agent_name].append(f"Assistant: {text}")
+    return text
+
+# def model(prompt):
+#     global history
+
+#     history += f"User: {prompt}\n"
+
+#     model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+#     model = genai.GenerativeModel(model_name)
+#     response = model.generate_content(history)
 
 
-    history += f"Assistant: {response.text}\n"
+#     history += f"Assistant: {response.text}\n"
 
-    return response.text
+#     return response.text
