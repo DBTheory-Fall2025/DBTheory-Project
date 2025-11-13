@@ -1,8 +1,34 @@
 import tomli
+from .constants.prompt_constants import PLEASE_ONLY_CODE_PLEASE_I_BEG_YOU
+from ..ai_setup import model
+import json
+import re
 from utils.db_util import connect_to_db, create_new_database
 from datetime import datetime
 
+example_json = """{
+  "queries": [
+    "CREATE TABLE ...;",
+    "CREATE TABLE ...;"
+  ]
+}"""
 
+
+def combine_tables(tc):
+    table1 = tc[0]
+    table2 = tc[1]
+    query1 = "SELECT * FROM "+ table1[0] + ";"
+    query2 = "SELECT * FROM"+ table2[0] + ";"
+    
+    # pull two tables from 2 old db
+    read_sql_data(conn, query1, params=None)
+    read_sql_data(conn, query2, params=None)
+    #have AI combine tables and return
+     schema = generate_conversion_scripts(analysis, new_schema, sql_commands)
+    
+    #push new table into new db
+     write_to_target_db()
+    
 
 #spliting names to compent parts
 def sep_name(name):
