@@ -35,15 +35,6 @@ services:
     depends_on:
       - postgres
 
-  dbTarget:
-    image: postgres:latest
-    environment:
-      POSTGRES_DB: ${DBTARGET_NAME}
-      POSTGRES_USER: ${DBTARGET_USER}
-      POSTGRES_PASSWORD: ${DBTARGET_PASSWORD}
-    ports:
-      - "5433:5432"
-
   app:
     ports:
       - "51932:51932"
