@@ -142,9 +142,9 @@ button:hover {
   background-color: #f9f9f9;
 }
 .log-entry {
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px dotted #ddd;
 }
 .log-entry:last-child {
   border-bottom: none;
@@ -163,4 +163,156 @@ button:hover {
   text-align: center;
   font-weight: bold;
   padding-top: 10px;
+}
+
+/* Retry and Error Messages */
+.retry-message {
+  margin: 10px 0;
+  padding: 10px 12px;
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 3px;
+  font-size: 0.9em;
+  color: #856404;
+  display: flex;
+  align-items: center;
+}
+
+.retry-icon {
+  margin-right: 8px;
+  font-size: 1.1em;
+}
+
+.retry-text {
+  flex-grow: 1;
+}
+
+.error-message {
+  margin: 10px 0;
+  padding: 12px;
+  background-color: #f8d7da;
+  border-left: 4px solid #dc3545;
+  border-radius: 3px;
+  font-size: 0.9em;
+  color: #721c24;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 1.1em;
+  margin-right: 6px;
+  display: inline-block;
+}
+
+.error-text {
+  display: inline;
+}
+
+.retry-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  align-self: flex-start;
+  transition: background-color 0.2s ease;
+}
+
+.retry-button:hover {
+  background-color: #c82333;
+}
+.thinking-bubble {
+  margin: 15px 0;
+  padding: 0;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.thinking-bubble-content {
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border: 2px dotted #999;
+  border-radius: 20px;
+  display: inline-block;
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #555;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.thinking-bubble:hover .thinking-bubble-content {
+  background-color: #e8e8e8;
+  border-color: #666;
+}
+
+.thinking-detail {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background-color: #fafafa;
+  border-left: 3px solid #999;
+  border-radius: 3px;
+  font-size: 0.9em;
+  line-height: 1.4;
+  color: #666;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.thinking-detail code {
+  display: block;
+  background-color: #f0f0f0;
+  padding: 8px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  overflow-x: auto;
+}
+
+/* Code Block Styles */
+.code-block {
+  display: block;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 4px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 10px 0;
+  white-space: pre;
+  word-wrap: break-word;
+  border: 1px solid #333;
+}
+
+.code-block code {
+  color: #d4d4d4;
+  font-family: inherit;
+}
+
+/* Scrollbar styling for code blocks */
+.code-block::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.code-block::-webkit-scrollbar-track {
+  background: #2d2d2d;
+  border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb:hover {
+  background: #777;
 }
