@@ -1,5 +1,7 @@
-from ..ai_setup import model
-def check_logic(analysis, new_schema, sql_commands,conversion_scripts):
+from ..ai_setup import model_stream
+from ..utils.agent_util import stream_agent_message
+
+def check_logic(analysis, new_schema, sql_commands, conversion_scripts, status_callback=None):
     """
     Checks the logic of the generated assets such as the conversion scripts and new tables.
     """
@@ -37,7 +39,13 @@ INSERT/Conversion scripts:
 {conversion_scripts}
 
 """
-    response = model(prompt, agent_name = "logic_checker").strip().lower()
+    response = stream_agent_message(
+        agent_id="logic-checker",
+        node_id="I",
+        message_generator_or_callable=lambda: model_stream(prompt, agent_name="logic_checker"),
+        status_callback=status_callback,
+        is_code=False
+    ).strip().lower()
 
     if response == "true":
         return True

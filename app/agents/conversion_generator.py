@@ -1,4 +1,5 @@
-from ..ai_setup import model
+from ..ai_setup import model_stream
+from ..utils.agent_util import stream_agent_message
 import json
 import re
 
@@ -9,7 +10,7 @@ example_json = """{
   ]
 }"""
 
-def generate_conversion_scripts(analysis, new_schema, sql_commands):
+def generate_conversion_scripts(analysis, new_schema, sql_commands, status_callback=None):
     """
     Generates data conversion scripts based on the analysis and new schema.
     """
@@ -35,7 +36,13 @@ create table statements:
 {sql_commands}
 """
     
-    response = model(prompt, agent_name = "conversion_generator")
+    response = stream_agent_message(
+        agent_id="conversion-generator",
+        node_id="C",
+        message_generator_or_callable=lambda: model_stream(prompt, agent_name="conversion_generator"),
+        status_callback=status_callback,
+        is_code=True
+    )
     try:
         parsed = json.loads(clean_json_response(response))
         if isinstance(parsed, dict) and "queries" in parsed:

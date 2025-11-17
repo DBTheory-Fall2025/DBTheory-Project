@@ -4,6 +4,7 @@ import queue
 import threading
 from flask import Flask, Response, render_template, jsonify, request
 from .utils.db_util import connect_to_db
+from .utils.agent_util import set_update_queue
 from .workflow import run_workflow
 
 app = Flask(__name__)
@@ -13,6 +14,9 @@ db_configs_in_memory = {}
 
 # In-memory queue for SSE messages
 update_queue = queue.Queue()
+
+# Initialize the agent utility with the update queue
+set_update_queue(update_queue)
 
 def load_db_configs():
     global db_configs_in_memory

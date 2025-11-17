@@ -1,6 +1,8 @@
-from ..ai_setup import model
+from ..ai_setup import model_stream
+from ..utils.agent_util import stream_agent_message
 from ..utils.db_util import get_schema, read_sql_data
 import json
+
 read_request = """{
   "read_requests": [
     {"db": "db1", "query": "SELECT * FROM users LIMIT 5"},
@@ -12,7 +14,7 @@ analysis_json = """{
   "analysis": "Detailed comparison and merge plan here."
 }"""
 
-def find_similarities(db_connections):
+def find_similarities(db_connections, status_callback=None):
     """
     Analyzes the schemas of the given databases and uses an AI model
     to find similarities between them.
@@ -43,14 +45,13 @@ def find_similarities(db_connections):
         schema_text += "\n"
 
     prompt = f"""
-You are an advanced data engineeri tasked with merging two databses. Please analyze these schemas and identify columns and tables that are similar and could be merged.
-You can use the `read_sql_data(query)` function to inspect the data in the tables to get a better understanding of the contents.
-For example, you can run `read_sql_data("SELECT * FROM users LIMIT 5")` to see a few rows from the users table.
-Provide a detailed analysis of the similarities and a plan for merging the data.
-here are there schemas:
+You are an advanced data engineer tasked with merging two databases. Please analyze these schemas and identify columns and tables that are similar and could be merged.
+You can request to see sample data from specific tables to help with your analysis.
+
+Here are the schemas:
 {schema_text}
-If you want to see actual sample data, you may request it by responding ONLY with
-a JSON object like this:
+
+If you want to see actual sample data to help with your analysis, respond ONLY with a JSON object like this:
 
 {read_request}
 
@@ -59,8 +60,15 @@ If you have enough information already, respond with a JSON object like this:
 {analysis_json}
 """
 
-    # Get the AI's analysis
-    ai_response = model(prompt,agent_name = "similarity_finder")
+    # Get the AI's analysis with streaming
+    # Pass a callable so we can regenerate the generator on retries
+    ai_response = stream_agent_message(
+        agent_id="similarity-finder",
+        node_id="A",
+        message_generator_or_callable=lambda: model_stream(prompt, agent_name="similarity_finder"),
+        status_callback=status_callback,
+        is_code=False
+    )
     analysis = ai_response
 
     if isinstance(ai_response, str) and '"read_requests"' in ai_response:
@@ -71,8 +79,6 @@ If you have enough information already, respond with a JSON object like this:
         except json.JSONDecodeError as e:
             errors_occurred = True
             request_obj = {"read_requests": []}
-        
-        
 
         for req in request_obj.get("read_requests", []):
             db_name = req.get("db")
@@ -114,7 +120,12 @@ and provide your final similarity analysis and merge plan as JSON:
 {analysis_json}
 """
 
-        analysis = model(re_prompt, agent_name = "similarity_finder")
+        analysis = stream_agent_message(
+            agent_id="similarity-finder",
+            node_id="A",
+            message_generator_or_callable=lambda: model_stream(re_prompt, agent_name="similarity_finder"),
+            status_callback=status_callback,
+            is_code=False
+        )
 
-    # TODO: Give the ai the result of it's read_sql_data(query) & have it re-analyze if it wishes
     return analysis

@@ -1,5 +1,6 @@
 from .constants.prompt_constants import PLEASE_ONLY_CODE_PLEASE_I_BEG_YOU
-from ..ai_setup import model
+from ..ai_setup import model_stream
+from ..utils.agent_util import stream_agent_message
 import json
 import re
 
@@ -10,7 +11,7 @@ example_json = """{
   ]
 }"""
 
-def generate_sql(schema):
+def generate_sql(schema, status_callback=None):
   """
   Takes a unified SQL schema and uses an AI model to generate
   the final, executable SQL commands.
@@ -29,7 +30,13 @@ Schema:
 Return only the JSON object containing the queries, do not return any additional comments, characters, or annotations. 
 """
     
-  response = model(prompt, agent_name = "sql_generator")
+  response = stream_agent_message(
+      agent_id="sql-generator",
+      node_id="D",
+      message_generator_or_callable=lambda: model_stream(prompt, agent_name="sql_generator"),
+      status_callback=status_callback,
+      is_code=True
+  )
   try:
       parsed = json.loads(clean_json_response(response))
       if isinstance(parsed, dict) and "queries" in parsed:
