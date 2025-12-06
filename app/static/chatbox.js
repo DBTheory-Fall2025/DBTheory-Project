@@ -439,10 +439,80 @@ class ChatboxManager {
     logContainer.appendChild(entry);
     logContainer.scrollTop = logContainer.scrollHeight;
   }
+
+  /**
+   * Add a message indicating the agent has switched
+   * @param {string} agentId - The ID of the agent where the message appears
+   * @param {string} targetAgentId - The ID of the agent we switched to
+   */
+  addAgentSwitchMessage(agentId, targetAgentId) {
+    const logContainer = document.getElementById(agentId);
+    if (!logContainer) return;
+
+    const entry = document.createElement("div");
+    entry.className = "agent-switch-notification";
+    entry.onclick = () => openTab(null, targetAgentId);
+
+    entry.innerHTML = `
+    <span class="agent-switch-icon"><i class="fas fa-arrow-right"></i></span>
+    <span class="agent-switch-text">Moved to ${targetAgentId.replace(
+      /-/g,
+      " "
+    )}</span>
+  `;
+
+    logContainer.appendChild(entry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
 }
 
 // Create a global instance
 const chatboxManager = new ChatboxManager();
+
+let currentActiveAgentId = null;
+
+function showLoading(agentId) {
+  // Add to tab link
+  const tabLink = document.querySelector(`.tab-link[data-tab="${agentId}"]`);
+  if (tabLink && !tabLink.querySelector(".loading-spinner")) {
+    const spinner = document.createElement("div");
+    spinner.className = "loading-spinner";
+    tabLink.appendChild(spinner);
+  }
+
+  // Add to log container
+  const logContainer = document.getElementById(agentId);
+  if (logContainer && !logContainer.querySelector(".log-loading-container")) {
+    const loadingContainer = document.createElement("div");
+    loadingContainer.className = "log-loading-container";
+    loadingContainer.innerHTML = `
+      <div class="loading-spinner"></div>
+      <span>AI is working...</span>
+    `;
+    logContainer.appendChild(loadingContainer);
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+}
+
+function hideLoading(agentId) {
+  if (!agentId) return;
+
+  // Remove from tab link
+  const tabLink = document.querySelector(`.tab-link[data-tab="${agentId}"]`);
+  if (tabLink) {
+    const spinner = tabLink.querySelector(".loading-spinner");
+    if (spinner) spinner.remove();
+  }
+
+  // Remove from log container
+  const logContainer = document.getElementById(agentId);
+  if (logContainer) {
+    const loadingContainer = logContainer.querySelector(
+      ".log-loading-container"
+    );
+    if (loadingContainer) loadingContainer.remove();
+  }
+}
 
 /**
  * Listen for streaming updates from the server via Server-Sent Events (SSE)
@@ -457,6 +527,8 @@ function listenForUpdates() {
     if (data.agentId === "workflow-complete") {
       renderMermaidDiagram();
       chatboxManager.completeStream();
+      if (currentActiveAgentId) hideLoading(currentActiveAgentId);
+      currentActiveAgentId = null;
       eventSource.close();
       return;
     }
@@ -465,15 +537,42 @@ function listenForUpdates() {
     if (data.agentId === "error") {
       showMessage(data.message, "error");
       chatboxManager.completeStream();
+      if (currentActiveAgentId) hideLoading(currentActiveAgentId);
+      currentActiveAgentId = null;
       eventSource.close();
       return;
     }
 
+    // Agent Switching Logic
+    if (data.agentId && data.agentId !== currentActiveAgentId) {
+      // If there was a previous agent, notify and clean up
+      if (currentActiveAgentId) {
+        hideLoading(currentActiveAgentId);
+        chatboxManager.addAgentSwitchMessage(
+          currentActiveAgentId,
+          data.agentId
+        );
+      }
+
+      // Determine if we should auto-switch tabs
+      // Only switch if the user is currently looking at the tab of the previous agent
+      // OR if this is the very first agent (currentActiveAgentId is null)
+      const activeTab = document.querySelector(".tab-content.active");
+      const activeTabId = activeTab ? activeTab.id : null;
+
+      if (
+        currentActiveAgentId === null ||
+        activeTabId === currentActiveAgentId
+      ) {
+        openTab(null, data.agentId);
+      }
+
+      currentActiveAgentId = data.agentId;
+      showLoading(currentActiveAgentId);
+    }
+
     // Render diagram with active node
     renderMermaidDiagram(data.nodeId);
-
-    // Open the tab for this agent
-    openTab(null, data.agentId);
 
     // Handle retry messages
     if (data.isRetry) {
