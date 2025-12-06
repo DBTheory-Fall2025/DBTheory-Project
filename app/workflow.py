@@ -9,6 +9,7 @@ from .agents import (
     conversion_error_handler,
 )
 from .utils.db_util import get_schema, write_to_target_db
+from .utils.agent_util import send_sql_result
 
 def run_workflow(db_connections, new_db_conn, status_callback):
     """
@@ -48,10 +49,10 @@ def run_workflow(db_connections, new_db_conn, status_callback):
             try:
                 write_to_target_db(new_db_conn, stmt)
                 successful_statements.append(stmt)
-                status_callback("sql-executor", f"Success:\n{stmt}", "E", is_code=True)
+                send_sql_result("sql-executor", "Target DB", stmt, "Success", "E", status_callback)
             except Exception as e:
                 error_msg = str(e)
-                status_callback("sql-error-handler", f"Failed statement {idx}: {error_msg}", "F")
+                send_sql_result("sql-error-handler", "Target DB", stmt, f"Failed statement {idx}: {error_msg}", "F", status_callback)
 
                 # error handler (has built-in retry logic)
                 fixed_sql = sql_error_handler.handle_sql_error(stmt, error_msg, None)
@@ -59,10 +60,10 @@ def run_workflow(db_connections, new_db_conn, status_callback):
                 # retry fixed sql
                 try:
                     write_to_target_db(new_db_conn, fixed_sql)
-                    status_callback("sql-error-handler", f"Fixed statement {idx} executed successfully.", "F")
+                    send_sql_result("sql-error-handler", "Target DB", fixed_sql, f"Fixed statement {idx} executed successfully.", "F", status_callback)
                     successful_statements.append(fixed_sql)
                 except Exception as e2:
-                    status_callback("sql-error-handler", f"Retry failed for statement {idx}: {str(e2)}", "F")
+                    send_sql_result("sql-error-handler", "Target DB", fixed_sql, f"Retry failed for statement {idx}: {str(e2)}", "F", status_callback)
                     failed_statements.append((stmt, str(e2)))
 
             time.sleep(0.5)
@@ -108,10 +109,10 @@ def run_workflow(db_connections, new_db_conn, status_callback):
             try:
                 write_to_target_db(new_db_conn, stmt)
                 conv_success.append(stmt)
-                status_callback("conversion-executor", f"Success:\n{stmt}", "H", is_code=True)
+                send_sql_result("conversion-executor", "Target DB", stmt, "Success", "H", status_callback)
             except Exception as e:
                 error_msg = str(e)
-                status_callback("conversion-error-handler", f"Failed statement {idx}: {error_msg}", "H")
+                send_sql_result("conversion-error-handler", "Target DB", stmt, f"Failed statement {idx}: {error_msg}", "H", status_callback)
 
                 # AI conversion error handler (has built-in retry logic)
                 fixed_stmt = conversion_error_handler.handle_conversion_error(stmt, error_msg, None)
@@ -119,10 +120,10 @@ def run_workflow(db_connections, new_db_conn, status_callback):
                 try:
                     write_to_target_db(new_db_conn, fixed_stmt)
                     conv_success.append(fixed_stmt)
-                    status_callback("conversion-error-handler", f"Fixed statement {idx} executed successfully.", "H")
+                    send_sql_result("conversion-error-handler", "Target DB", fixed_stmt, f"Fixed statement {idx} executed successfully.", "H", status_callback)
                 except Exception as e2:
                     conv_failures.append((stmt, str(e2)))
-                    status_callback("conversion-error-handler", f"Retry failed for statement {idx}: {str(e2)}", "H")
+                    send_sql_result("conversion-error-handler", "Target DB", fixed_stmt, f"Retry failed for statement {idx}: {str(e2)}", "H", status_callback)
 
             time.sleep(0.5)
         

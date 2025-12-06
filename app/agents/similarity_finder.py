@@ -1,9 +1,8 @@
 from ..ai_setup import model_stream, model
-from ..utils.agent_util import stream_agent_message, send_agent_update
+from ..utils.agent_util import stream_agent_message, send_agent_update, send_sql_result
 from ..utils.db_util import get_enhanced_schema, read_sql_data, read_sql_data_with_headers
 from ..utils.mermaid_util import generate_schema_diagram
 import json
-import html
 import hashlib
 
 # Constants
@@ -172,11 +171,11 @@ def _process_data_requests(db_connections, request_obj, schemas, status_callback
         message_id = f"result-{msg_hash}"
             
         if db_name not in db_connections:
-            _send_single_result(db_name, original_query, "Error: Unknown database", status_callback, message_id)
+            send_sql_result("similarity-finder", db_name, original_query, "Error: Unknown database", "A", status_callback, message_id)
             continue
 
         # Initial "Loading" state
-        _send_single_result(db_name, original_query, "Executing query...", status_callback, message_id)
+        send_sql_result("similarity-finder", db_name, original_query, "Executing query...", "A", status_callback, message_id)
 
         # Retry Loop
         current_query = original_query
@@ -189,7 +188,7 @@ def _process_data_requests(db_connections, request_obj, schemas, status_callback
                 result = read_sql_data_with_headers(db_connections[db_name], current_query)
                 data_samples[f"{db_name}:{current_query}"] = result
                 success = True
-                _send_single_result(db_name, current_query, result, status_callback, message_id)
+                send_sql_result("similarity-finder", db_name, current_query, result, "A", status_callback, message_id)
                 break
             except Exception as e:
                 # CRITICAL FIX: Rollback transaction to clear error state
@@ -200,19 +199,19 @@ def _process_data_requests(db_connections, request_obj, schemas, status_callback
                 if attempt < max_retries - 1:
                     # Update UI to show failure and fixing status
                     fail_msg = f"Query failed (Attempt {attempt+1}/{max_retries}): {last_error}\nAttempting to fix..."
-                    _send_single_result(db_name, current_query, fail_msg, status_callback, message_id)
+                    send_sql_result("similarity-finder", db_name, current_query, fail_msg, "A", status_callback, message_id)
                     
                     current_query = _attempt_query_fix(db_name, current_query, last_error, schemas.get(db_name), status_callback)
                     if not current_query: # Fix failed
                         break
                     
                     # Update UI to show new query is being tried
-                    _send_single_result(db_name, current_query, "Retrying with new query...", status_callback, message_id)
+                    send_sql_result("similarity-finder", db_name, current_query, "Retrying with new query...", "A", status_callback, message_id)
 
         if not success:
             fail_msg = f"Failed after {max_retries} attempts. Last Error: {last_error}"
             data_samples[f"{db_name}:{current_query} (Failed)"] = fail_msg
-            _send_single_result(db_name, f"{current_query} (Failed)", fail_msg, status_callback, message_id)
+            send_sql_result("similarity-finder", db_name, f"{current_query} (Failed)", fail_msg, "A", status_callback, message_id)
             
     return data_samples
 
@@ -243,58 +242,18 @@ Return ONLY the SQL query, nothing else. No markdown.
         print(f"Fix generation failed: {e}")
         return None
 
-def _send_single_result(db_name, query, result, status_callback, message_id=None):
-    html_content = _generate_result_html(db_name, query, result)
-    # Important: Wrap in markdown block for frontend
-    msg = f"```html\n{html_content}\n```"
-    send_agent_update("similarity-finder", msg, "A", status_callback=status_callback, message_id=message_id)
-
-def _generate_result_html(db_name, query, result):
-    # Escape query to prevent HTML injection
-    safe_query = html.escape(query)
-    safe_db = html.escape(str(db_name))
-    
-    table_html = ""
-    if isinstance(result, dict) and 'columns' in result:
-        cols = result['columns']
-        rows = result['rows']
-        
-        table_html = '<table class="result-table"><thead><tr>'
-        for col in cols:
-            table_html += f'<th>{html.escape(str(col))}</th>'
-        table_html += '</tr></thead><tbody>'
-        
-        for row in rows[:10]:
-            table_html += '<tr>'
-            for cell in row:
-                table_html += f'<td>{html.escape(str(cell))}</td>'
-            table_html += '</tr>'
-        if len(rows) > 10:
-            table_html += f'<tr><td colspan="{len(cols)}">... ({len(rows)-10} more rows) ...</td></tr>'
-        table_html += '</tbody></table>'
-    else:
-        table_html = f'<div class="error">{html.escape(str(result))}</div>'
-    
-    return f'''
-    <div class="query-results-container">
-        <div class="query-result-row">
-            <div class="query-box">
-                <h4>Query ({safe_db})</h4>
-                <pre>{safe_query}</pre>
-            </div>
-            <div class="result-box">
-                <h4>Result</h4>
-                {table_html}
-            </div>
-        </div>
-    </div>
-    '''
 
 def _run_final_analysis(data_samples, status_callback):
+    try:
+        data_json = json.dumps(data_samples, indent=2, default=str)
+    except Exception as e:
+        print(f"Error serializing data samples to JSON: {e}", flush=True)
+        data_json = str(data_samples)
+
     re_prompt = f"""
 Here are the results of your requested queries:
 
-{json.dumps(data_samples, indent=2)}
+{data_json}
 
 Now re-analyze the schemas using this data context,
 and provide your final similarity analysis and merge plan in PLAIN TEXT (Markdown allowed).

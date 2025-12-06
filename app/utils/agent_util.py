@@ -7,6 +7,7 @@ import json
 import queue
 import time
 import random
+import html
 from typing import Callable, Optional, Generator
 
 
@@ -264,3 +265,91 @@ def send_agent_update(
     
     if status_callback:
         status_callback(agent_id, message, node_id, is_code)
+
+
+def generate_result_html(db_name: str, query: str, result) -> str:
+    """
+    Generate HTML for a SQL query result (or error/status message).
+    
+    Args:
+        db_name: The name of the database
+        query: The SQL query executed
+        result: Either a dict with 'columns' and 'rows' (success) or a string (error/status)
+        
+    Returns:
+        HTML string representing the result
+    """
+    # Escape query to prevent HTML injection
+    safe_query = html.escape(query)
+    safe_db = html.escape(str(db_name))
+    
+    table_html = ""
+    if isinstance(result, dict) and 'columns' in result and 'rows' in result:
+        cols = result['columns']
+        rows = result['rows']
+        
+        table_html = '<table class="result-table"><thead><tr>'
+        for col in cols:
+            table_html += f'<th>{html.escape(str(col))}</th>'
+        table_html += '</tr></thead><tbody>'
+        
+        for row in rows[:10]:
+            table_html += '<tr>'
+            for cell in row:
+                table_html += f'<td>{html.escape(str(cell))}</td>'
+            table_html += '</tr>'
+        if len(rows) > 10:
+            table_html += f'<tr><td colspan="{len(cols)}">... ({len(rows)-10} more rows) ...</td></tr>'
+        table_html += '</tbody></table>'
+    else:
+        # If it's not a result dict, treat as message/error
+        res_str = str(result)
+        # Apply style based on content
+        if "Success" in res_str or "success" in res_str:
+            cls = "success"
+        else:
+            cls = "error"
+            
+        table_html = f'<div class="{cls}">{html.escape(res_str)}</div>'
+    
+    return f'''
+    <div class="query-results-container">
+        <div class="query-result-row">
+            <div class="query-box">
+                <h4>Query ({safe_db})</h4>
+                <pre>{safe_query}</pre>
+            </div>
+            <div class="result-box">
+                <h4>Result</h4>
+                {table_html}
+            </div>
+        </div>
+    </div>
+    '''
+
+
+def send_sql_result(
+    agent_id: str, 
+    db_name: str, 
+    query: str, 
+    result, 
+    node_id: str, 
+    status_callback: Optional[Callable] = None, 
+    message_id: Optional[str] = None
+) -> None:
+    """
+    Helper to send a formatted SQL result (or error/status) to the chat.
+    
+    Args:
+        agent_id: The ID of the agent
+        db_name: The name of the database
+        query: The SQL query executed
+        result: The result (dict or string)
+        node_id: The workflow node ID
+        status_callback: Optional callback for status updates
+        message_id: Optional unique ID for the message
+    """
+    html_content = generate_result_html(db_name, query, result)
+    # Important: Wrap in markdown block for frontend
+    msg = f"```html\n{html_content}\n```"
+    send_agent_update(agent_id, msg, node_id, status_callback=status_callback, message_id=message_id)
