@@ -7,6 +7,7 @@ class ChatboxManager {
   constructor() {
     this.currentStreamingElement = null;
     this.currentThinkingElement = null;
+    this.currentStreamBuffer = "";
   }
 
   /**
@@ -63,6 +64,9 @@ class ChatboxManager {
       this.currentStreamingElement = entry;
     }
 
+    // Reset buffer for new stream
+    this.currentStreamBuffer = "";
+
     logContainer.appendChild(entry);
     logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll
 
@@ -89,8 +93,19 @@ class ChatboxManager {
         this.codeElement.textContent += chunk;
       }
     } else {
-      // For regular text, just append
-      this.currentStreamingElement.textContent += chunk;
+      // For regular text, handle streaming formatting
+      this.currentStreamBuffer += chunk;
+      const text = this.currentStreamBuffer.trim();
+
+      // Check if it looks like the start of a JSON object/array
+      if (text.startsWith("{") || text.startsWith("[")) {
+        const formatted = this.formatPartialJSON(this.currentStreamBuffer);
+        this.currentStreamingElement.textContent = formatted;
+        this.currentStreamingElement.style.whiteSpace = "pre-wrap";
+        this.currentStreamingElement.style.fontFamily = "monospace";
+      } else {
+        this.currentStreamingElement.textContent = this.currentStreamBuffer;
+      }
     }
 
     // Auto-scroll to bottom
@@ -98,6 +113,44 @@ class ChatboxManager {
     if (logContainer) {
       logContainer.scrollTop = logContainer.scrollHeight;
     }
+  }
+
+  formatPartialJSON(text) {
+    let indent = 0;
+    let inString = false;
+    let result = "";
+    let lastChar = "";
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (char === '"' && lastChar !== "\\") {
+        inString = !inString;
+      }
+
+      if (!inString) {
+        if (char === "{" || char === "[") {
+          result += char + "\n" + "  ".repeat(indent + 1);
+          indent++;
+        } else if (char === "}" || char === "]") {
+          indent = Math.max(0, indent - 1);
+          result += "\n" + "  ".repeat(indent) + char;
+        } else if (char === ",") {
+          result += char + "\n" + "  ".repeat(indent);
+        } else if (char === ":") {
+          result += ": ";
+        } else {
+          // Keep non-whitespace chars
+          if (char.trim() !== "") {
+            result += char;
+          }
+        }
+      } else {
+        result += char;
+      }
+      lastChar = char;
+    }
+    return result;
   }
 
   /**
@@ -143,8 +196,147 @@ class ChatboxManager {
    * Complete the current stream and reset
    */
   completeStream() {
+    // Attempt to format the completed log entry
+    if (this.currentStreamingElement) {
+      this.formatLogEntry(this.currentStreamingElement);
+    }
+
     this.currentStreamingElement = null;
     this.currentThinkingElement = null;
+  }
+
+  /**
+   * Format a log entry (markdown, json, html, mermaid)
+   * @param {HTMLElement} element - The log entry element
+   */
+  formatLogEntry(element) {
+    if (!element) return;
+
+    // Check if it's a code block (isCode=true was used)
+    const codeBlock = element.querySelector("pre.code-block code");
+    if (codeBlock) {
+      this.formatJSONInElement(codeBlock);
+      return;
+    }
+
+    // Text entry - process markdown blocks
+    const text = element.textContent;
+    const parts = text.split(/(```(?:json|mermaid|html)?\s*[\s\S]*?```)/g);
+
+    if (parts.length > 1) {
+      element.innerHTML = ""; // Clear content
+      element.style.whiteSpace = "normal"; // Reset style from streaming
+      element.style.fontFamily = "inherit";
+
+      parts.forEach((part) => {
+        const codeMatch = part.match(
+          /^```(json|mermaid|html)?\s*([\s\S]*?)```$/
+        );
+        if (codeMatch) {
+          const lang = codeMatch[1];
+          const codeContent = codeMatch[2];
+
+          if (lang === "mermaid") {
+            const mermaidDiv = document.createElement("div");
+            mermaidDiv.className = "mermaid";
+            mermaidDiv.textContent = codeContent.trim();
+            element.appendChild(mermaidDiv);
+            try {
+              window.mermaid.init(undefined, mermaidDiv);
+            } catch (e) {
+              console.error("Mermaid render error:", e);
+            }
+            return;
+          }
+
+          if (lang === "html") {
+            const htmlDiv = document.createElement("div");
+            htmlDiv.innerHTML = codeContent; // Allow HTML rendering
+            element.appendChild(htmlDiv);
+            return;
+          }
+
+          // Handle JSON or generic code
+          let formattedCode = codeContent;
+          if (!lang || lang === "json") {
+            try {
+              const json = JSON.parse(codeContent.trim());
+              formattedCode = JSON.stringify(json, null, 2);
+            } catch (e) {
+              // Not JSON, keep as is
+            }
+          }
+
+          const pre = document.createElement("pre");
+          pre.className = "code-block";
+          const code = document.createElement("code");
+          code.textContent = formattedCode;
+          pre.appendChild(code);
+          element.appendChild(pre);
+        } else {
+          // Regular text part - Render Markdown
+          if (part.trim() !== "") {
+            const p = document.createElement("div");
+            if (window.marked && window.marked.parse) {
+              p.innerHTML = window.marked.parse(part);
+            } else {
+              p.textContent = part;
+            }
+            element.appendChild(p);
+          }
+        }
+      });
+      return;
+    }
+
+    // If no markdown blocks, check if the whole content looks like JSON
+    if (
+      (text.trim().startsWith("{") && text.trim().endsWith("}")) ||
+      (text.trim().startsWith("[") && text.trim().endsWith("]"))
+    ) {
+      try {
+        JSON.parse(text); // Validate
+        this.formatJSONInElement(element);
+        return;
+      } catch (e) {
+        // Not valid JSON, fall through
+      }
+    }
+
+    // Fallback: Render whole text as Markdown
+    if (window.marked && window.marked.parse) {
+      element.innerHTML = window.marked.parse(text);
+      element.style.whiteSpace = "normal";
+      element.style.fontFamily = "inherit";
+    }
+  }
+
+  /**
+   * Try to parse and pretty-print JSON inside an element
+   * @param {HTMLElement} element
+   */
+  formatJSONInElement(element) {
+    try {
+      // Remove potential markdown fences if they exist in the text content
+      let text = element.textContent.trim();
+      text = text.replace(/^```(?:json)?/, "").replace(/```$/, "");
+
+      const json = JSON.parse(text);
+      element.textContent = JSON.stringify(json, null, 2);
+
+      // If the parent is not a pre block, wrap it (for the non-isCode case)
+      if (element.tagName !== "CODE" && element.tagName !== "PRE") {
+        const pre = document.createElement("pre");
+        pre.className = "code-block";
+        const code = document.createElement("code");
+        code.textContent = element.textContent;
+        pre.appendChild(code);
+        element.innerHTML = "";
+        element.appendChild(pre);
+      }
+    } catch (e) {
+      // Not valid JSON, leave as is
+    }
   }
 
   /**
@@ -280,6 +472,17 @@ function listenForUpdates() {
       } else if (data.streamComplete) {
         // Stream finished
         chatboxManager.completeStream();
+      } else {
+        // Non-streaming complete message (e.g., status update)
+        const entry = chatboxManager.addLogEntry(
+          data.agentId,
+          data.message,
+          data.isCode,
+          false
+        );
+        chatboxManager.formatLogEntry(entry);
+        // Reset currentStreamingElement so next message starts a new entry
+        chatboxManager.currentStreamingElement = null;
       }
     }
   };

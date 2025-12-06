@@ -17,21 +17,22 @@ def run_workflow(db_connections, new_db_conn, status_callback):
     try:
         # 1. Similarity Finder
         try:
-            analysis = similarity_finder.find_similarities(db_connections, status_callback)
+            # Pass None for callback to avoid duplicate messages (agent_util handles streaming)
+            analysis = similarity_finder.find_similarities(db_connections, None)
         except Exception as e:
             status_callback("error", f"Similarity Finder failed: {str(e)}", None)
             return
         
         # 2. Schema Generator
         try:
-            new_schema = schema_generator.generate_schema(analysis, status_callback)
+            new_schema = schema_generator.generate_schema(analysis, None)
         except Exception as e:
             status_callback("error", f"Schema Generator failed: {str(e)}", None)
             return
 
         # 3. SQL Generator
         try:
-            sql_commands = sql_generator.generate_sql(new_schema, status_callback)
+            sql_commands = sql_generator.generate_sql(new_schema, None)
         except Exception as e:
             status_callback("error", f"SQL Generator failed: {str(e)}", None)
             return
@@ -53,7 +54,7 @@ def run_workflow(db_connections, new_db_conn, status_callback):
                 status_callback("sql-error-handler", f"Failed statement {idx}: {error_msg}", "F")
 
                 # error handler (has built-in retry logic)
-                fixed_sql = sql_error_handler.handle_sql_error(stmt, error_msg, status_callback)
+                fixed_sql = sql_error_handler.handle_sql_error(stmt, error_msg, None)
 
                 # retry fixed sql
                 try:
@@ -80,14 +81,14 @@ def run_workflow(db_connections, new_db_conn, status_callback):
 
         # 5. generate the conversion scripts
         try:
-            conversion_scripts = conversion_generator.generate_conversion_scripts(analysis, new_schema, sql_commands, status_callback)
+            conversion_scripts = conversion_generator.generate_conversion_scripts(analysis, new_schema, sql_commands, None)
         except Exception as e:
             status_callback("error", f"Conversion Generator failed: {str(e)}", None)
             return
 
         # 6. Logic Checker
         try:
-            is_ok = logic_checker.check_logic(analysis, new_schema, sql_commands, conversion_scripts, status_callback)
+            is_ok = logic_checker.check_logic(analysis, new_schema, sql_commands, conversion_scripts, None)
         except Exception as e:
             status_callback("error", f"Logic Checker failed: {str(e)}", None)
             return
@@ -113,7 +114,7 @@ def run_workflow(db_connections, new_db_conn, status_callback):
                 status_callback("conversion-error-handler", f"Failed statement {idx}: {error_msg}", "H")
 
                 # AI conversion error handler (has built-in retry logic)
-                fixed_stmt = conversion_error_handler.handle_conversion_error(stmt, error_msg, status_callback)
+                fixed_stmt = conversion_error_handler.handle_conversion_error(stmt, error_msg, None)
 
                 try:
                     write_to_target_db(new_db_conn, fixed_stmt)
