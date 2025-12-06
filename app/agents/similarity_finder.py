@@ -1,18 +1,20 @@
-from ..ai_setup import model_stream
+from ..ai_setup import model_stream, model
 from ..utils.agent_util import stream_agent_message, send_agent_update
 from ..utils.db_util import get_enhanced_schema, read_sql_data, read_sql_data_with_headers
 from ..utils.mermaid_util import generate_schema_diagram
 import json
+import html
+import hashlib
 
-read_request = """{
+# Constants
+READ_REQUEST_TEMPLATE = """{
   "read_requests": [
     {"db": "db1", "query": "SELECT * FROM users LIMIT 5"},
     {"db": "db2", "query": "SELECT * FROM members LIMIT 5"}
   ]
 }"""
 
-# We no longer enforce JSON for the final analysis, but we give a structure hint
-analysis_structure = """
+ANALYSIS_STRUCTURE = """
 Overview:
 [High level summary]
 
@@ -29,34 +31,48 @@ Unmergeable Tables:
 
 def find_similarities(db_connections, status_callback=None):
     """
-    Analyzes the schemas of the given databases and uses an AI model
-    to find similarities between them.
+    Analyzes schemas to find similarities using AI.
     """
-    schemas = {}
+    schemas = _pull_schemas(db_connections, status_callback)
+    _generate_diagram(schemas, status_callback)
     
-    # 1. Pull Schema Information
+    prompt = _build_initial_prompt(schemas)
+    
+    # Get initial analysis (potentially containing JSON request)
+    ai_response = _get_ai_response_safely(prompt, "similarity-finder", "A", status_callback)
+    analysis = ai_response
+
+    # Check for data read requests
+    request_obj = _parse_json_request(ai_response)
+    
+    if request_obj:
+        # Process requests and get samples
+        data_samples = _process_data_requests(db_connections, request_obj, schemas, status_callback)
+        
+        # Re-analyze with data
+        analysis = _run_final_analysis(data_samples, status_callback)
+
+    return analysis
+
+def _pull_schemas(db_connections, status_callback):
     send_agent_update("similarity-finder", "Pulling schema information...", "A", status_callback=status_callback)
-    
+    schemas = {}
     for db_name, conn in db_connections.items():
-        # Use enhanced schema to get PKs/FKs
-        schema = get_enhanced_schema(conn)
-        print(f"[DEBUG] Schema returned for {db_name}: {schema.keys()}", flush=True)
-        schemas[db_name] = schema
-
-    # Failsafe: If no schemas or empty schemas, abort
+        schemas[db_name] = get_enhanced_schema(conn)
+        print(f"[DEBUG] Schema returned for {db_name}: {schemas[db_name].keys()}", flush=True)
+    
     if not any(schemas.values()):
-        error_msg = "No schemas found in the selected databases. Aborting AI analysis."
-        print(f"[ERROR] {error_msg}")
-        raise Exception(error_msg)
+        raise Exception("No schemas found in the selected databases.")
+    return schemas
 
-    # 2. Generate and send Mermaid Diagram
+def _generate_diagram(schemas, status_callback):
     try:
         diagram = generate_schema_diagram(schemas)
         send_agent_update("similarity-finder", f"\n```mermaid\n{diagram}\n```\n", "A", status_callback=status_callback)
     except Exception as e:
         print(f"Error generating diagram: {e}")
 
-    # Format the schemas into a prompt for the AI
+def _build_initial_prompt(schemas):
     schema_text = ""
     for db_name, schema_info in schemas.items():
         schema_text += f"Database: {db_name}\n"
@@ -69,12 +85,11 @@ def find_similarities(db_connections, status_callback=None):
                 for fk in details['fks']:
                     if fk['col'] == col_name:
                         extras.append(f"FK -> {fk['ref_table']}.{fk['ref_col']}")
-                
                 extra_str = f" [{', '.join(extras)}]" if extras else ""
                 schema_text += f"    - {col_name} ({col_type}){extra_str}\n"
         schema_text += "\n"
 
-    prompt = f"""
+    return f"""
 You are an advanced data engineer tasked with merging two databases. Please analyze these schemas and identify columns and tables that are similar and could be merged.
 You can request to see sample data from specific tables to help with your analysis.
 
@@ -83,113 +98,200 @@ Here are the schemas:
 
 If you want to see actual sample data to help with your analysis, respond ONLY with a JSON object like this:
 
-{read_request}
+{READ_REQUEST_TEMPLATE}
 
 If you have enough information already, provide your detailed analysis and reasoning in PLAIN TEXT (Markdown allowed). 
 Do NOT wrap your final analysis in JSON. Structure your analysis clearly.
 
 Recommended structure:
-{analysis_structure}
+{ANALYSIS_STRUCTURE}
 """
 
-    # Get the AI's response
-    ai_response = stream_agent_message(
-        agent_id="similarity-finder",
-        node_id="A",
-        message_generator_or_callable=lambda: model_stream(prompt, agent_name="similarity_finder"),
-        status_callback=status_callback,
-        is_code=False
-    )
-    analysis = ai_response
+def _get_ai_response_safely(prompt, agent_name, node_id, status_callback):
+    """
+    Streams response but hides it if it starts with JSON.
+    """
+    generator = model_stream(prompt, agent_name=agent_name)
+    first_chunk = next(generator, None)
+    
+    if not first_chunk:
+        return ""
 
-    # Check if the AI requested data (JSON format)
-    if isinstance(ai_response, str) and '"read_requests"' in ai_response:
-        errors_occurred = False
-        data_samples = {}
-        try:
-            # Clean possible markdown fences
-            clean_response = ai_response.strip()
-            if clean_response.startswith("```json"):
-                clean_response = clean_response[7:]
-            if clean_response.endswith("```"):
-                clean_response = clean_response[:-3]
+    stripped = first_chunk.strip()
+    # Check for JSON start
+    is_json = stripped.startswith('{') or stripped.startswith('```json') or (stripped.startswith('```') and not stripped.startswith('```mermaid'))
+    
+    full_response = first_chunk
+    
+    if is_json:
+        # Buffer silently
+        for chunk in generator:
+            full_response += chunk
+        return full_response
+    else:
+        # Stream visibly
+        def reconstructed_gen():
+            yield first_chunk
+            yield from generator
             
-            request_obj = json.loads(clean_response.strip())
-        except json.JSONDecodeError as e:
-            # If it's not valid JSON, assume it's the text analysis and proceed
-            print(f"JSON decode error or text response: {e}")
-            return analysis
+        return stream_agent_message(
+            agent_id=agent_name,
+            node_id=node_id,
+            message_generator_or_callable=reconstructed_gen,
+            status_callback=status_callback,
+            is_code=False
+        )
 
-        # 3. Getting Table Content
-        send_agent_update("similarity-finder", "Getting table content...", "A", status_callback=status_callback)
+def _parse_json_request(text):
+    if not isinstance(text, str) or '"read_requests"' not in text:
+        return None
+    
+    try:
+        clean = text.strip()
+        if clean.startswith("```json"): clean = clean[7:]
+        if clean.startswith("```"): clean = clean[3:]
+        if clean.endswith("```"): clean = clean[:-3]
+        return json.loads(clean.strip())
+    except json.JSONDecodeError:
+        print("Failed to parse JSON request from AI.")
+        return None
 
-        for req in request_obj.get("read_requests", []):
-            db_name = req.get("db")
-            query = req.get("query")
+def _process_data_requests(db_connections, request_obj, schemas, status_callback):
+    send_agent_update("similarity-finder", "Getting table content...", "A", status_callback=status_callback)
+    data_samples = {}
+    
+    for req in request_obj.get("read_requests", []):
+        db_name = req.get("db")
+        original_query = req.get("query")
+        
+        if not db_name or not original_query:
+            continue
 
-            if not db_name or not query:
-                continue
-            if db_name not in db_connections:
-                data_samples[f"{db_name}:{query}"] = "Error: unknown database name"
-                errors_occurred = True
-                continue
+        # Generate stable message ID for this table slot
+        msg_hash = hashlib.md5(f"{db_name}:{original_query}".encode()).hexdigest()
+        message_id = f"result-{msg_hash}"
+            
+        if db_name not in db_connections:
+            _send_single_result(db_name, original_query, "Error: Unknown database", status_callback, message_id)
+            continue
 
+        # Initial "Loading" state
+        _send_single_result(db_name, original_query, "Executing query...", status_callback, message_id)
+
+        # Retry Loop
+        current_query = original_query
+        max_retries = 3
+        success = False
+        last_error = None
+        
+        for attempt in range(max_retries):
             try:
-                result = read_sql_data_with_headers(db_connections[db_name], query)
-                data_samples[f"{db_name}:{query}"] = result
+                result = read_sql_data_with_headers(db_connections[db_name], current_query)
+                data_samples[f"{db_name}:{current_query}"] = result
+                success = True
+                _send_single_result(db_name, current_query, result, status_callback, message_id)
+                break
             except Exception as e:
-                data_samples[f"{db_name}:{query}"] = f"Error executing query: {e}"
-                errors_occurred = True
+                # CRITICAL FIX: Rollback transaction to clear error state
+                if hasattr(db_connections[db_name], 'rollback'):
+                    db_connections[db_name].rollback()
+                
+                last_error = str(e)
+                if attempt < max_retries - 1:
+                    # Update UI to show failure and fixing status
+                    fail_msg = f"Query failed (Attempt {attempt+1}/{max_retries}): {last_error}\nAttempting to fix..."
+                    _send_single_result(db_name, current_query, fail_msg, status_callback, message_id)
+                    
+                    current_query = _attempt_query_fix(db_name, current_query, last_error, schemas.get(db_name), status_callback)
+                    if not current_query: # Fix failed
+                        break
+                    
+                    # Update UI to show new query is being tried
+                    _send_single_result(db_name, current_query, "Retrying with new query...", status_callback, message_id)
 
-        # 4. Show Queries and Results
-        # Generate HTML for side-by-side view
-        results_html = '<div class="query-results-container">'
-        for key, result in data_samples.items():
-            parts = key.split(':', 1)
-            db = parts[0]
-            query_str = parts[1] if len(parts) > 1 else "Unknown Query"
+        if not success:
+            fail_msg = f"Failed after {max_retries} attempts. Last Error: {last_error}"
+            data_samples[f"{db_name}:{current_query} (Failed)"] = fail_msg
+            _send_single_result(db_name, f"{current_query} (Failed)", fail_msg, status_callback, message_id)
             
-            # Generate table
-            table_html = ""
-            if isinstance(result, dict) and 'columns' in result:
-                cols = result['columns']
-                rows = result['rows']
-                
-                table_html = '<table class="result-table"><thead><tr>'
-                for col in cols:
-                    table_html += f'<th>{col}</th>'
-                table_html += '</tr></thead><tbody>'
-                
-                # Limit rows for display if too many?
-                for row in rows[:10]: # Display top 10 rows
-                    table_html += '<tr>'
-                    for cell in row:
-                        table_html += f'<td>{str(cell)}</td>'
-                    table_html += '</tr>'
-                if len(rows) > 10:
-                    table_html += f'<tr><td colspan="{len(cols)}">... ({len(rows)-10} more rows) ...</td></tr>'
-                table_html += '</tbody></table>'
-            else:
-                table_html = f'<div class="error">{result}</div>'
-                
-            results_html += f'''
-            <div class="query-result-row">
-                <div class="query-box">
-                    <h4>Query ({db})</h4>
-                    <pre>{query_str}</pre>
-                </div>
-                <div class="result-box">
-                    <h4>Result</h4>
-                    {table_html}
-                </div>
+    return data_samples
+
+def _attempt_query_fix(db_name, query, error, schema_info, status_callback):
+    fix_prompt = f"""
+The following SQL query failed on database '{db_name}'.
+Query: {query}
+Error: {error}
+
+Schema for {db_name}:
+{schema_info}
+
+Please provide a CORRECTED SQL query that accomplishes the same goal (fetching sample data).
+Return ONLY the SQL query, nothing else. No markdown.
+"""
+    try:
+        fixed = model(fix_prompt, agent_name="similarity-finder-fixer").strip()
+        # Cleanup
+        if fixed.startswith("```sql"): fixed = fixed[6:]
+        if fixed.startswith("```"): fixed = fixed[3:]
+        if fixed.endswith("```"): fixed = fixed[:-3]
+        fixed = fixed.strip()
+        
+        # Don't send update here, we do it in the main loop to keep message ID consistent
+        # send_agent_update("similarity-finder", f"Retrying with: {fixed}", "A", status_callback=status_callback)
+        return fixed
+    except Exception as e:
+        print(f"Fix generation failed: {e}")
+        return None
+
+def _send_single_result(db_name, query, result, status_callback, message_id=None):
+    html_content = _generate_result_html(db_name, query, result)
+    # Important: Wrap in markdown block for frontend
+    msg = f"```html\n{html_content}\n```"
+    send_agent_update("similarity-finder", msg, "A", status_callback=status_callback, message_id=message_id)
+
+def _generate_result_html(db_name, query, result):
+    # Escape query to prevent HTML injection
+    safe_query = html.escape(query)
+    safe_db = html.escape(str(db_name))
+    
+    table_html = ""
+    if isinstance(result, dict) and 'columns' in result:
+        cols = result['columns']
+        rows = result['rows']
+        
+        table_html = '<table class="result-table"><thead><tr>'
+        for col in cols:
+            table_html += f'<th>{html.escape(str(col))}</th>'
+        table_html += '</tr></thead><tbody>'
+        
+        for row in rows[:10]:
+            table_html += '<tr>'
+            for cell in row:
+                table_html += f'<td>{html.escape(str(cell))}</td>'
+            table_html += '</tr>'
+        if len(rows) > 10:
+            table_html += f'<tr><td colspan="{len(cols)}">... ({len(rows)-10} more rows) ...</td></tr>'
+        table_html += '</tbody></table>'
+    else:
+        table_html = f'<div class="error">{html.escape(str(result))}</div>'
+    
+    return f'''
+    <div class="query-results-container">
+        <div class="query-result-row">
+            <div class="query-box">
+                <h4>Query ({safe_db})</h4>
+                <pre>{safe_query}</pre>
             </div>
-            '''
-        results_html += '</div>'
+            <div class="result-box">
+                <h4>Result</h4>
+                {table_html}
+            </div>
+        </div>
+    </div>
+    '''
 
-        send_agent_update("similarity-finder", f"```html\n{results_html}\n```", "A", status_callback=status_callback)
-
-        # Build the follow-up prompt
-        re_prompt = f"""
+def _run_final_analysis(data_samples, status_callback):
+    re_prompt = f"""
 Here are the results of your requested queries:
 
 {json.dumps(data_samples, indent=2)}
@@ -199,15 +301,12 @@ and provide your final similarity analysis and merge plan in PLAIN TEXT (Markdow
 Do NOT wrap it in JSON.
 
 Recommended structure:
-{analysis_structure}
+{ANALYSIS_STRUCTURE}
 """
-
-        analysis = stream_agent_message(
-            agent_id="similarity-finder",
-            node_id="A",
-            message_generator_or_callable=lambda: model_stream(re_prompt, agent_name="similarity_finder"),
-            status_callback=status_callback,
-            is_code=False
-        )
-
-    return analysis
+    return stream_agent_message(
+        agent_id="similarity-finder",
+        node_id="A",
+        message_generator_or_callable=lambda: model_stream(re_prompt, agent_name="similarity_finder"),
+        status_callback=status_callback,
+        is_code=False
+    )

@@ -235,6 +235,7 @@ def send_agent_update(
     node_id: str,
     is_code: bool = False,
     status_callback: Optional[Callable] = None,
+    message_id: Optional[str] = None,
 ) -> None:
     """
     Send a complete agent update (non-streaming).
@@ -246,6 +247,7 @@ def send_agent_update(
         node_id: The workflow node ID
         is_code: Whether the message is code
         status_callback: Optional callback for status updates
+        message_id: Optional unique ID for the message (allows updating in-place)
     """
     global _update_queue
     
@@ -254,6 +256,7 @@ def send_agent_update(
         "message": message,
         "nodeId": node_id,
         "isCode": is_code,
+        "messageId": message_id,
     }
     
     if _update_queue:

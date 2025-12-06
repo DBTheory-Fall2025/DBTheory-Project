@@ -11,6 +11,44 @@ class ChatboxManager {
   }
 
   /**
+   * Update a log entry by ID (or create if not exists)
+   * @param {string} agentId - The ID of the agent
+   * @param {string} messageId - The unique ID of the message
+   * @param {string} message - The message content
+   * @param {boolean} isCode - Whether the message is code
+   */
+  updateLogEntry(agentId, messageId, message, isCode = false) {
+    const logContainer = document.getElementById(agentId);
+    if (!logContainer) return;
+
+    let entry = document.getElementById(messageId);
+
+    if (!entry) {
+      entry = document.createElement("div");
+      entry.id = messageId;
+      entry.className = "log-entry";
+      logContainer.appendChild(entry);
+    }
+
+    // Reset content
+    entry.innerHTML = "";
+
+    if (isCode) {
+      const pre = document.createElement("pre");
+      pre.className = "code-block";
+      const codeEl = document.createElement("code");
+      codeEl.textContent = message;
+      pre.appendChild(codeEl);
+      entry.appendChild(pre);
+    } else {
+      entry.textContent = message;
+    }
+
+    // Apply formatting (Markdown, HTML, etc.)
+    this.formatLogEntry(entry);
+  }
+
+  /**
    * Add a log entry to the agent panel
    * @param {string} agentId - The ID of the agent
    * @param {string} message - The message to add
@@ -462,7 +500,15 @@ function listenForUpdates() {
       }
     } else {
       // Regular message
-      if (data.isStreaming && !data.streamComplete) {
+      if (data.messageId) {
+        // Explicit update by ID
+        chatboxManager.updateLogEntry(
+          data.agentId,
+          data.messageId,
+          data.message,
+          data.isCode
+        );
+      } else if (data.isStreaming && !data.streamComplete) {
         // Streaming chunk
         if (!chatboxManager.currentStreamingElement) {
           // Create new log entry for this stream
