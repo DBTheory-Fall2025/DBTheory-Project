@@ -12,6 +12,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
   <body>
     <h1>Database Combiner</h1>
@@ -72,11 +73,79 @@
       </div>
     </div>
 
+    <div id="database-viewer" style="display: none">
+      <h2>Combined Database Explorer</h2>
+      <p>
+        Use this tool to explore the schema and data of your newly combined
+        database. You can view table structures, run custom SQL queries, and
+        search through data.
+      </p>
+      <div class="db-viewer-container">
+        <div class="db-side-panel">
+          <div class="side-panel-header">
+            <button
+              id="reload-db"
+              class="reload-button"
+              title="Reload database structure"
+            >
+              <i class="fas fa-sync-alt"></i> Reload
+            </button>
+          </div>
+          <div class="side-panel-content">
+            <div class="side-panel-item active" data-view="sql">SQL</div>
+            <div id="table-list"></div>
+          </div>
+        </div>
+        <div class="db-main-panel">
+          <div id="sql-editor-container" class="panel-content">
+            <div class="sql-editor">
+              <div class="sql-toolbar">
+                <button id="run-sql" class="run-button">
+                  <i class="fas fa-play"></i> Run SQL
+                </button>
+              </div>
+              <textarea
+                id="sql-input"
+                class="sql-input"
+                placeholder="Enter your SQL query here..."
+              ></textarea>
+            </div>
+            <div class="sql-results-divider" id="sql-divider"></div>
+            <div class="sql-results">
+              <div id="sql-output"></div>
+            </div>
+          </div>
+          <div id="table-viewer" class="panel-content" style="display: none">
+            <div class="table-search-container">
+              <div class="search-box-wrapper">
+                <i class="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  class="table-search"
+                  placeholder="Search table contents..."
+                />
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="data-table">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
       window.mermaid = mermaid; // Expose mermaid to global scope
       mermaid.initialize({ startOnLoad: true });
     </script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='chatbox.js') }}"></script>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='script.js') }}"
+    ></script>
   </body>
 </html>
