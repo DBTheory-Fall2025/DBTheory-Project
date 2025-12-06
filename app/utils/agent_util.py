@@ -5,7 +5,6 @@ Each agent should use these functions to enable streaming responses and thinking
 
 import json
 import queue
-import threading
 import time
 import random
 from typing import Callable, Optional, Generator

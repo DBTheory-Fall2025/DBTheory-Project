@@ -18,6 +18,15 @@ def get_schema(conn):
     schema = {}
     cursor = conn.cursor()
     try:
+        # Get DB name for logging
+        try:
+            dsn_params = conn.get_dsn_parameters()
+            db_name = dsn_params.get('dbname', 'unknown')
+        except Exception:
+            db_name = 'unknown'
+            
+        print(f"[DEBUG] get_schema: Connected to '{db_name}'", flush=True)
+
         # Get all tables in the public schema
         cursor.execute("""
             SELECT table_name
@@ -25,6 +34,8 @@ def get_schema(conn):
             WHERE table_schema = 'public'
         """)
         tables = [row[0] for row in cursor.fetchall()]
+        
+        print(f"[DEBUG] get_schema: Found tables in public schema for '{db_name}': {tables}", flush=True)
         
         for table_name in tables:
             # Get all columns for each table

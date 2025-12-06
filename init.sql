@@ -103,6 +103,8 @@ FROM '/seed-data/CincyPotHole/MostPotHolesST.cvs'
 DELIMITER ','
 CSV HEADER;
 
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO cincypothole_user;
+
 CREATE USER travdb_user WITH PASSWORD 'travdb_password';
 CREATE DATABASE travdb;
 GRANT ALL PRIVILEGES ON DATABASE travdb TO travdb_user;
@@ -163,6 +165,8 @@ COPY "flights" ("travelCode", "userCode", "fromCity", "toCity", "flightType", "p
 FROM '/seed-data/TravDB/flights.csv'
 DELIMITER ','
 CSV HEADER;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO travdb_user;
 
 CREATE USER hamiltongarb_user WITH PASSWORD 'hamiltongarb_password';
 CREATE DATABASE hamiltongarb;
@@ -276,4 +280,6 @@ COPY "Solid_Waste_Landfill_westV" ("X", "Y", "FID", "permit_id", "fac_name", "is
 FROM '/seed-data/HamiltonGarb/Solid_Waste_Landfill_westV.csv'
 DELIMITER ','
 CSV HEADER;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO hamiltongarb_user;
 

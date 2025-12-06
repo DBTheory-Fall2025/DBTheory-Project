@@ -103,6 +103,9 @@ def main():
                 f.write("DELIMITER ','\n")
                 f.write("CSV HEADER;\n\n")
 
+            # Grant privileges to the user so they can access the created tables
+            f.write(f"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {user};\n\n")
+
             # Prepare the database configuration
             db_configs[db_name] = {
                 "host": "postgres",

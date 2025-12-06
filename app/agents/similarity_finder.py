@@ -23,7 +23,14 @@ def find_similarities(db_connections, status_callback=None):
     for db_name, conn in db_connections.items():
         schema = get_schema(conn)
         print(f"[DEBUG] Schema returned for {db_name}: {schema}", flush=True)
-        schemas[db_name] = get_schema(conn)
+        schemas[db_name] = schema # Store the result of the first call
+
+    # Failsafe: If no schemas or empty schemas, abort
+    if not any(schemas.values()):
+        error_msg = "No schemas found in the selected databases. Aborting AI analysis."
+        print(f"[ERROR] {error_msg}")
+        # Raising exception to stop the workflow
+        raise Exception(error_msg)
 
     print("\n=== DATABASE SCHEMAS ===")
     for db_name, schema_info in schemas.items():
@@ -58,6 +65,8 @@ If you want to see actual sample data to help with your analysis, respond ONLY w
 If you have enough information already, respond with a JSON object like this:
 
 {analysis_json}
+
+Make sure your final response also includes the tables that cannot be merged but should be kept in the unified schema.
 """
 
     # Get the AI's analysis with streaming
