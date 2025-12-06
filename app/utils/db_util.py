@@ -137,3 +137,31 @@ def write_to_target_db(conn, query, params=None):
         raise
     finally:
         cursor.close()
+
+def write_batch_to_target_db(conn, table, columns, data):
+    """Executes a batch insert into the target DB."""
+    if not data:
+        return
+    
+    conn.autocommit = True
+    cursor = conn.cursor()
+    try:
+        # Generate placeholders: (%s, %s, ...)
+        placeholders = "(" + ", ".join(["%s"] * len(columns)) + ")"
+        col_names = ", ".join(columns)
+        
+        # Construct the INSERT query
+        # query = f"INSERT INTO {table} ({col_names}) VALUES {placeholders}"
+        # Using execute_values for efficiency would be better, but standard executemany is fine for now
+        
+        from psycopg2.extras import execute_values
+        query = f"INSERT INTO {table} ({col_names}) VALUES %s"
+        execute_values(cursor, query, data)
+        
+        print(f"Executed batch insert into {table}: {len(data)} rows")
+    except Exception as e:
+        print(f"Error executing batch insert into '{table}': {e}")
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()

@@ -8,7 +8,7 @@ from .agents import (
     conversion_generator,
     conversion_error_handler,
 )
-from .utils.db_util import get_schema, write_to_target_db
+from .utils.db_util import get_schema, write_to_target_db, read_sql_data, write_batch_to_target_db
 from .utils.agent_util import send_sql_result
 
 def run_workflow(db_connections, new_db_conn, status_callback):
@@ -104,26 +104,73 @@ def run_workflow(db_connections, new_db_conn, status_callback):
         conv_success = []
         conv_failures = []
 
-        for idx, stmt in enumerate(conversion_scripts, start=1):
-            status_callback("conversion-executor", f"Executing statement {idx}/{len(conversion_scripts)}...", "H")
-            try:
-                write_to_target_db(new_db_conn, stmt)
-                conv_success.append(stmt)
-                send_sql_result("conversion-executor", "Target DB", stmt, "Success", "H", status_callback)
-            except Exception as e:
-                error_msg = str(e)
-                send_sql_result("conversion-error-handler", "Target DB", stmt, f"Failed statement {idx}: {error_msg}", "H", status_callback)
+        for idx, item in enumerate(conversion_scripts, start=1):
+            if isinstance(item, dict):
+                # New Transfer Object logic
+                target_table = item.get('target_table')
+                source_db = item.get('source_db')
+                source_query = item.get('source_query')
+                target_columns = item.get('target_columns')
 
-                # AI conversion error handler (has built-in retry logic)
-                fixed_stmt = conversion_error_handler.handle_conversion_error(stmt, error_msg, None)
-
+                status_callback("conversion-executor", f"Transferring to {target_table}...", "H")
+                
                 try:
-                    write_to_target_db(new_db_conn, fixed_stmt)
-                    conv_success.append(fixed_stmt)
-                    send_sql_result("conversion-error-handler", "Target DB", fixed_stmt, f"Fixed statement {idx} executed successfully.", "H", status_callback)
-                except Exception as e2:
-                    conv_failures.append((stmt, str(e2)))
-                    send_sql_result("conversion-error-handler", "Target DB", fixed_stmt, f"Retry failed for statement {idx}: {str(e2)}", "H", status_callback)
+                    if source_db not in db_connections:
+                        raise Exception(f"Source DB '{source_db}' not found.")
+                    
+                    # Fetch data safely
+                    source_conn = db_connections[source_db]
+                    
+                    # Use read_sql_safely to auto-fix query if it fails
+                    result_dict = sql_error_handler.read_sql_safely(
+                        conn=source_conn,
+                        query=source_query,
+                        agent_name="conversion-executor",
+                        status_callback=status_callback,
+                        schema_context=None, # Will auto-fetch if error occurs
+                        db_name=source_db,
+                        node_id="H"
+                    )
+                    
+                    if not result_dict or not result_dict.get('rows'):
+                        status_callback("conversion-executor", f"No data found for {target_table} (Source: {source_db}).", "H")
+                        continue
+
+                    data = result_dict['rows']
+
+                    # Insert data
+                    write_batch_to_target_db(new_db_conn, target_table, target_columns, data)
+                    
+                    conv_success.append(item)
+                    send_sql_result("conversion-executor", "Target DB", f"Transferred {len(data)} rows to {target_table}", "Success", "H", status_callback)
+                
+                except Exception as e:
+                    error_msg = str(e)
+                    conv_failures.append((item, error_msg))
+                    send_sql_result("conversion-error-handler", "Target DB", f"Transfer to {target_table}", f"Failed: {error_msg}", "H", status_callback)
+
+            else:
+                # Legacy SQL String logic
+                stmt = item
+                status_callback("conversion-executor", f"Executing statement {idx}/{len(conversion_scripts)}...", "H")
+                try:
+                    write_to_target_db(new_db_conn, stmt)
+                    conv_success.append(stmt)
+                    send_sql_result("conversion-executor", "Target DB", stmt, "Success", "H", status_callback)
+                except Exception as e:
+                    error_msg = str(e)
+                    send_sql_result("conversion-error-handler", "Target DB", stmt, f"Failed statement {idx}: {error_msg}", "H", status_callback)
+
+                    # AI conversion error handler (has built-in retry logic)
+                    fixed_stmt = conversion_error_handler.handle_conversion_error(stmt, error_msg, None)
+
+                    try:
+                        write_to_target_db(new_db_conn, fixed_stmt)
+                        conv_success.append(fixed_stmt)
+                        send_sql_result("conversion-error-handler", "Target DB", fixed_stmt, f"Fixed statement {idx} executed successfully.", "H", status_callback)
+                    except Exception as e2:
+                        conv_failures.append((stmt, str(e2)))
+                        send_sql_result("conversion-error-handler", "Target DB", fixed_stmt, f"Retry failed for statement {idx}: {str(e2)}", "H", status_callback)
 
             time.sleep(0.5)
         

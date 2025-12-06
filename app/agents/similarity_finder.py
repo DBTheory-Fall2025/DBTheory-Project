@@ -1,7 +1,8 @@
 from ..ai_setup import model_stream, model
 from ..utils.agent_util import stream_agent_message, send_agent_update, send_sql_result
-from ..utils.db_util import get_enhanced_schema, read_sql_data, read_sql_data_with_headers
+from ..utils.db_util import get_enhanced_schema
 from ..utils.mermaid_util import generate_schema_diagram
+from .sql_error_handler import read_sql_safely
 import json
 import hashlib
 
@@ -165,82 +166,34 @@ def _process_data_requests(db_connections, request_obj, schemas, status_callback
         
         if not db_name or not original_query:
             continue
-
-        # Generate stable message ID for this table slot
-        msg_hash = hashlib.md5(f"{db_name}:{original_query}".encode()).hexdigest()
-        message_id = f"result-{msg_hash}"
             
         if db_name not in db_connections:
+            # We still need to show an error message manually if DB is unknown
+            msg_hash = hashlib.md5(f"{db_name}:{original_query}".encode()).hexdigest()
+            message_id = f"result-{msg_hash}"
             send_sql_result("similarity-finder", db_name, original_query, "Error: Unknown database", "A", status_callback, message_id)
             continue
 
-        # Initial "Loading" state
-        send_sql_result("similarity-finder", db_name, original_query, "Executing query...", "A", status_callback, message_id)
-
-        # Retry Loop
-        current_query = original_query
-        max_retries = 3
-        success = False
-        last_error = None
+        conn = db_connections[db_name]
+        schema_context = schemas.get(db_name)
         
-        for attempt in range(max_retries):
-            try:
-                result = read_sql_data_with_headers(db_connections[db_name], current_query)
-                data_samples[f"{db_name}:{current_query}"] = result
-                success = True
-                send_sql_result("similarity-finder", db_name, current_query, result, "A", status_callback, message_id)
-                break
-            except Exception as e:
-                # CRITICAL FIX: Rollback transaction to clear error state
-                if hasattr(db_connections[db_name], 'rollback'):
-                    db_connections[db_name].rollback()
-                
-                last_error = str(e)
-                if attempt < max_retries - 1:
-                    # Update UI to show failure and fixing status
-                    fail_msg = f"Query failed (Attempt {attempt+1}/{max_retries}): {last_error}\nAttempting to fix..."
-                    send_sql_result("similarity-finder", db_name, current_query, fail_msg, "A", status_callback, message_id)
-                    
-                    current_query = _attempt_query_fix(db_name, current_query, last_error, schemas.get(db_name), status_callback)
-                    if not current_query: # Fix failed
-                        break
-                    
-                    # Update UI to show new query is being tried
-                    send_sql_result("similarity-finder", db_name, current_query, "Retrying with new query...", "A", status_callback, message_id)
+        # Use safe execution with auto-fix
+        result = read_sql_safely(
+            conn=conn, 
+            query=original_query, 
+            agent_name="similarity-finder", 
+            status_callback=status_callback, 
+            schema_context=schema_context, 
+            db_name=db_name,
+            node_id="A"
+        )
 
-        if not success:
-            fail_msg = f"Failed after {max_retries} attempts. Last Error: {last_error}"
-            data_samples[f"{db_name}:{current_query} (Failed)"] = fail_msg
-            send_sql_result("similarity-finder", db_name, f"{current_query} (Failed)", fail_msg, "A", status_callback, message_id)
+        if result:
+            data_samples[f"{db_name}:{original_query}"] = result
+        else:
+            data_samples[f"{db_name}:{original_query} (Failed)"] = "Failed to fetch data."
             
     return data_samples
-
-def _attempt_query_fix(db_name, query, error, schema_info, status_callback):
-    fix_prompt = f"""
-The following SQL query failed on database '{db_name}'.
-Query: {query}
-Error: {error}
-
-Schema for {db_name}:
-{schema_info}
-
-Please provide a CORRECTED SQL query that accomplishes the same goal (fetching sample data).
-Return ONLY the SQL query, nothing else. No markdown.
-"""
-    try:
-        fixed = model(fix_prompt, agent_name="similarity-finder-fixer").strip()
-        # Cleanup
-        if fixed.startswith("```sql"): fixed = fixed[6:]
-        if fixed.startswith("```"): fixed = fixed[3:]
-        if fixed.endswith("```"): fixed = fixed[:-3]
-        fixed = fixed.strip()
-        
-        # Don't send update here, we do it in the main loop to keep message ID consistent
-        # send_agent_update("similarity-finder", f"Retrying with: {fixed}", "A", status_callback=status_callback)
-        return fixed
-    except Exception as e:
-        print(f"Fix generation failed: {e}")
-        return None
 
 
 def _run_final_analysis(data_samples, status_callback):

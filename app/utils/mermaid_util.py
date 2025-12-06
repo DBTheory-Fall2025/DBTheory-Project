@@ -34,19 +34,14 @@ def generate_schema_diagram(schemas):
                 markers = []
                 
                 if col_name in pks:
-                    # Gold/DarkGoldenRod background for PK, white text
+                    # Blue text for PK
                     markers.append("PK")
-                    # We wrap the whole name + marker in a styled span
-                    # Using CSS var or fixed color. #daa520 is goldenrod. 
-                    # We need a darker background for white text. #B8860B (DarkGoldenRod).
-                    style = "background-color:#B8860B; color:white; padding:2px 5px; border-radius:3px; font-weight:bold;"
-                    formatted_col = f"<span style='{style}'>{col_name} PK</span>"
+                    formatted_col = f'markdown["<div style="color:blue">**{col_name}**</div>"]'
                 
                 elif any(fk['col'] == col_name for fk in details['fks']):
-                    # Blue/SteelBlue background for FK, white text
+                    # Orange text for FK
                     markers.append("FK")
-                    style = "background-color:#4682b4; color:white; padding:2px 5px; border-radius:3px; font-weight:bold;"
-                    formatted_col = f"<span style='{style}'>{col_name} FK</span>"
+                    formatted_col = f'markdown["<div style="color:orange">**{col_name}**</div>"]'
                 else:
                     # Normal column
                     formatted_col = col_name
