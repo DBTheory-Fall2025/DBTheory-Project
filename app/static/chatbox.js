@@ -530,6 +530,9 @@ function listenForUpdates() {
       if (currentActiveAgentId) hideLoading(currentActiveAgentId);
       currentActiveAgentId = null;
       eventSource.close();
+      if (window.reloadDatabaseViewer) {
+        window.reloadDatabaseViewer();
+      }
       return;
     }
 

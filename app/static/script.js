@@ -82,12 +82,8 @@ async function combineDatabases() {
   const newDbName = document.getElementById("new-db-name").value;
 
   const resultsContainer = document.getElementById("results-container");
-  const databaseViewer = document.getElementById("database-viewer");
   if (resultsContainer) {
     resultsContainer.style.display = "block";
-  }
-  if (databaseViewer) {
-    databaseViewer.style.display = "block";
   }
 
   // Add a divider to all log tabs
@@ -139,7 +135,15 @@ window.selectItem = selectItem;
 window.openTab = openTab;
 
 // Import database viewer
-import { initializeDatabaseViewer } from "./database-view.js";
+import { initializeDatabaseViewer, loadTableList } from "./database-view.js";
+
+window.reloadDatabaseViewer = async () => {
+  const databaseViewer = document.getElementById("database-viewer");
+  if (databaseViewer) {
+    databaseViewer.style.display = "block";
+    await loadTableList();
+  }
+};
 
 // Initial setup
 document.addEventListener("DOMContentLoaded", () => {
