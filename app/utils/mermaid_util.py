@@ -23,8 +23,8 @@ def generate_schema_diagram(schemas):
             lines.append(f"        class {clean_table_name} {{")
             
             # Sort columns to put PKs first
-            columns = list(details['columns'].items())
-            pks = set(details['pks'])
+            columns = list(details["columns"].items())
+            pks = set(details["pks"])
             
             # Custom sort: PKs first, then others
             columns.sort(key=lambda x: 0 if x[0] in pks else 1)
@@ -34,22 +34,18 @@ def generate_schema_diagram(schemas):
                 markers = []
                 
                 if col_name in pks:
-                    # Blue text for PK
-                    markers.append("PK")
-                    formatted_col = f'markdown["<div style="color:blue">**{col_name}**</div>"]'
+                    # Add (PK) suffix for Primary Key
+                    lines.append(f"            {dtype} {col_name} (PK)")
                 
-                elif any(fk['col'] == col_name for fk in details['fks']):
-                    # Orange text for FK
-                    markers.append("FK")
-                    formatted_col = f'markdown["<div style="color:orange">**{col_name}**</div>"]'
+                elif any(fk["col"] == col_name for fk in details["fks"]):
+                    # Add (FK) suffix for Foreign Key
+                    lines.append(f"            {dtype} {col_name} (FK)")
                 else:
                     # Normal column
-                    formatted_col = col_name
-                
-                lines.append(f"            {dtype} {formatted_col}")
+                    lines.append(f"            {dtype} {col_name}")
                 
             lines.append("        }")
-            
+
         lines.append("    }")
         
         # Add relationships for this DB
