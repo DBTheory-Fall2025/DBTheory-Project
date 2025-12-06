@@ -74,6 +74,12 @@
     </div>
 
     <div id="database-viewer" style="display: none">
+      <h2>Combined Database Explorer</h2>
+      <p>
+        Use this tool to explore the schema and data of your newly combined
+        database. You can view table structures, run custom SQL queries, and
+        search through data.
+      </p>
       <div class="db-viewer-container">
         <div class="db-side-panel">
           <div class="side-panel-header">
@@ -137,6 +143,9 @@
       mermaid.initialize({ startOnLoad: true });
     </script>
     <script src="{{ url_for('static', filename='chatbox.js') }}"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='script.js') }}"
+    ></script>
   </body>
 </html>
