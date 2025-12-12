@@ -5,11 +5,19 @@ CREATE TABLE "Travel1" (
 );
 
 CREATE TABLE "addr1" (
-    "ID" VARCHAR(255) PRIMARY KEY,
+    "ID" INTEGER PRIMARY KEY,
     "homeNum" INTEGER, 
     "street" VARCHAR(255), 
     "city" VARCHAR(255), 
     "state"  VARCHAR(2),
     "zip" INTEGER,
     "income" DECIMAL
+);
+
+CREATE TABLE "trips" (
+    "trip" INTEGER PRIMARY KEY,
+    "dest" INTEGER,
+    "TravelOptions" INTEGER,
+    "start" INTEGER
+    
 );
