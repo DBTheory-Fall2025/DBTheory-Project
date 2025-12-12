@@ -254,6 +254,57 @@ CSV HEADER;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO hamiltongarb_user;
 
+CREATE USER travdb4address_user WITH PASSWORD 'travdb4address_password';
+CREATE DATABASE travdb4address;
+GRANT ALL PRIVILEGES ON DATABASE travdb4address TO travdb4address_user;
+
+\c travdb4address
+
+-- Contents from init.sql to create schema
+CREATE TABLE "Travel1" (
+    "TravelOptions" VARCHAR(255) PRIMARY KEY,
+    "dist" INTEGER,
+    "speed" DECIMAL
+);
+
+CREATE TABLE "addr1" (
+    "ID" INTEGER PRIMARY KEY,
+    "homeNum" INTEGER, 
+    "street" VARCHAR(255), 
+    "city" VARCHAR(255), 
+    "state"  VARCHAR(2),
+    "zip" INTEGER,
+    "income" DECIMAL
+);
+
+CREATE TABLE "trips" (
+    "trip" INTEGER PRIMARY KEY,
+    "dest" INTEGER,
+    "TravelOptions" INTEGER,
+    "start" INTEGER
+    
+);
+
+-- Populating addr1 from addr1.csv
+COPY "addr1" ("ID", "homeNum", "street", "city", "state", "zip", "income")
+FROM '/seed-data/TravDB4address/addr1.csv'
+DELIMITER ','
+CSV HEADER;
+
+-- Populating Travel1 from Travel1.csv
+COPY "Travel1" ("TravelOptions", "dist", "speed")
+FROM '/seed-data/TravDB4address/Travel1.csv'
+DELIMITER ','
+CSV HEADER;
+
+-- Populating trips from trips.csv
+COPY "trips" ("trip", "dest", "TravelOptions", "start")
+FROM '/seed-data/TravDB4address/trips.csv'
+DELIMITER ','
+CSV HEADER;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO travdb4address_user;
+
 CREATE USER travdb3_user WITH PASSWORD 'travdb3_password';
 CREATE DATABASE travdb3;
 GRANT ALL PRIVILEGES ON DATABASE travdb3 TO travdb3_user;

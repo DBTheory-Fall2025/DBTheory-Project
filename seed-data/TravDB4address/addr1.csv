@@ -1,5 +1,5 @@
-ID,homeNum, street, city, state, zip ,income
-1,5912, sirlancelot lane,fairfield,Oh,45014,0
-2,2854, lower river rd,cleves,CA,,1500
-3,286, columbia rd,Hamilton,OH,,1000
-4,35, help dr cincy,,KY,43210,0.1
+ID,homeNum,street,city,state,zip,income
+1,5912,sirlancelot lane,fairfield,Oh,45014,0
+2,2854,lower river rd,cleves,CA,,1500
+3,286,columbia rd,Hamilton,OH,,1000
+4,35,help dr cincy,,KY,43210,0.1

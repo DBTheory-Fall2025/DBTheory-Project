@@ -1,7 +1,7 @@
 CREATE TABLE "Travel1" (
     "TravelOptions" VARCHAR(255) PRIMARY KEY,
     "dist" INTEGER,
-    "speed" INTEGER
+    "speed" DECIMAL
 );
 
 CREATE TABLE "addr1" (
